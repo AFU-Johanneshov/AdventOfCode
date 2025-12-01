@@ -121,7 +121,7 @@ impl Dial {
 
 #[test]
 fn calculate_test() {
-    let expected_value = 3;
+    let expected_value = 6;
     match calculate("testdata.txt") {
         Ok(value) => assert_eq!(
             value, expected_value,
