@@ -18,6 +18,19 @@ would subtract 99 we would "skip" 0, offsetting the result by -1.
 
 Part Two:
 
+This adds some difficulty in the form of keeping track of how many times we pass 0. The quick and ugly fix to
+get it working was to:
+1: Dial.turn() returns a "passed" value instead of the current dial position.
+2: Add a counter in the Dial.turn() logic which:
+    1: Divide the steps by 100 ignoring decimals. Add this value to passes.
+    2: If direction is Left then increase passes by one if subtracting the steps from the current position would
+       result in a value below 0 AND if the current dial position is NOT 0.
+    3: If direction is Right then increase passes by one if adding the steps to the current position would result
+       in a value higher than 99.
+3: Edit the loop going through each line to always add the result of dial.turn() to the count variable.
+
+
+
 */
 
 /*
@@ -33,10 +46,7 @@ fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
     let mut count = 0;
     for line in lines {
         let rotation = Rotation::parse(&line)?;
-        let current_position = dial.turn(rotation);
-        if current_position == 0 {
-            count += 1;
-        }
+        count += dial.turn(rotation);
     }
 
     Ok(count)
@@ -49,11 +59,13 @@ fn main() {
     }
 }
 
+#[derive(Debug)]
 enum Dir {
     Left,
     Right,
 }
 
+#[derive(Debug)]
 struct Rotation {
     direction: Dir,
     steps: u16,
@@ -85,6 +97,7 @@ impl Rotation {
     }
 }
 
+#[derive(Debug)]
 struct Dial {
     position: u8,
 }
@@ -94,7 +107,10 @@ impl Dial {
         Dial { position: 50 }
     }
 
-    fn turn(&mut self, rotation: Rotation) -> u8 {
+    fn turn(&mut self, rotation: Rotation) -> u64 {
+        //let mut passes = 0;
+        let mut passes = (rotation.steps / 100) as u64;
+
         // It wasn't clear at first glance that the rotations could be more than 99 steps, but as
         // the data file does contain such values we use this to basically cut away the excess full
         // rotations and only keep the part that matters.
@@ -102,6 +118,9 @@ impl Dial {
 
         match rotation.direction {
             Dir::Left => {
+                if self.position != 0 && self.position <= steps {
+                    passes += 1;
+                }
                 if self.position < steps {
                     self.position = self.position + 100 - steps;
                 } else {
@@ -112,10 +131,20 @@ impl Dial {
                 self.position += steps;
                 if self.position > 99 {
                     self.position -= 100;
+                    passes += 1;
                 }
             }
         }
-        self.position
+
+        /* // Debug output
+        if passes != 0 {
+            println!(
+                "{:?} caused the dial to point at [0] {} times and stopped at the position: {}",
+                rotation, passes, self.position
+            );
+        } */
+
+        passes
     }
 }
 
