@@ -12,7 +12,6 @@ Once that is done we can process each number in the range of the pair.
 
 Processing could work like this:
 Convert the number into a string.
-If the string doesn't have an even number of digits then it is guaranteed to be valid.
 Split the string in half. If both parts are the same then the ID is invalid.
 
 
@@ -24,8 +23,8 @@ Part Two:
 */
 
 struct IDRange {
-    lower: u32,
-    upper: u32,
+    lower: u64,
+    upper: u64,
 }
 
 impl IDRange {
@@ -48,24 +47,26 @@ impl IDRange {
 
     fn invalid_id_sum(&self) -> u64 {
         let mut id_sum = 0;
-        for id in self.lower..self.upper {
+
+        for id in self.lower..=self.upper {
             let id_string = id.to_string();
-            let id_string_len = id_string.chars().count();
-            if (id_string_len % 2) != 0 {
-                continue;
-            }
-            if id_string[0..id_string_len / 2] == id_string[id_string_len / 2..] {
-                id_sum += id as u64;
+            let id_len = id_string.chars().count();
+            if id_string[0..id_len / 2] == id_string[id_len / 2..] {
+                id_sum += id;
             }
         }
+
         id_sum
     }
 }
 
 fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+    // get_lines returns an iterator over the lines of the file. next() attempts to return the
+    // first line, which we then ensure is there with expect().
     let line = reader::get_lines(data_path)?
         .next()
         .expect("The data files for this challenge always only contain 1 line.");
+
     let mut id_sum = 0;
     for data_string in line.split(',') {
         let id_range = IDRange::parse(data_string)?;
