@@ -29,6 +29,15 @@ Take the first two digits and iterate through the string two steps at a time. If
 Repeat this up to the string length/2.
 If any iterator completes without a mismatch then the id is invalid.
 
+Unfinished random ideas.
+A major point to optimise would be to ignore sequence lengths that would never occur in the range.
+Check how similar the lower and upper values are left to right.
+    235 - 278 only match with the first digit [2].
+    53437 - 53495 match with the first three digits [534]
+This can be used to skip checking some patterns. With the second range with the shared first digits of 534 we can figure out that:
+- The 1 digit pattern is impossible due to the second digit [3] not matching the first [5].
+- The 2 digit pattern is impossible due to the third digit [4] not matching the first [5].
+
 
 
 */
@@ -60,14 +69,32 @@ impl IDRange {
         let mut id_sum = 0;
 
         for id in self.lower..=self.upper {
-            let id_string = id.to_string();
-            let id_len = id_string.chars().count();
-            if id_string[0..id_len / 2] == id_string[id_len / 2..] {
+            let digit_count = id.ilog10() + 1;
+            if Self::is_invalid(&id.to_string(), digit_count as usize) {
                 id_sum += id;
             }
         }
 
         id_sum
+    }
+
+    fn is_invalid(id_string: &str, digit_count: usize) -> bool {
+        for pattern_len in 1..=digit_count / 2 {
+            let pattern = &id_string[0..pattern_len];
+            let mut i = pattern_len;
+            let mut invalid = true;
+            while i < digit_count {
+                if i + pattern_len > digit_count || pattern != &id_string[i..i + pattern_len] {
+                    invalid = false;
+                    break;
+                }
+                i += pattern_len;
+            }
+            if invalid {
+                return true;
+            }
+        }
+        false
     }
 }
 
