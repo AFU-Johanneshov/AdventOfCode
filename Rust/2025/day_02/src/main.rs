@@ -18,6 +18,17 @@ Split the string in half. If both parts are the same then the ID is invalid.
 
 Part Two:
 
+Part two adds a quite annoying new requirement. Any id with a repeating pattern is invalid as long as it repeats at least once.
+The first glance solution I can think of is to check each combination, which will be very slow.
+
+Which would mean checking each pattern from the first digit to half of all digits.
+So basically:
+Take the first digit and iterate through the string. If at any point a different digit is found then move on to the next.
+Take the first two digits and iterate through the string two steps at a time. If at any point the two digits checked doesn't
+    match the first then continue to the next.
+Repeat this up to the string length/2.
+If any iterator completes without a mismatch then the id is invalid.
+
 
 
 */
@@ -85,7 +96,7 @@ fn main() {
 
 #[test]
 fn calculate_test() {
-    let expected_value = 1227775554;
+    let expected_value = 4174379265;
     match calculate("testdata.txt") {
         Ok(value) => assert_eq!(
             value, expected_value,
