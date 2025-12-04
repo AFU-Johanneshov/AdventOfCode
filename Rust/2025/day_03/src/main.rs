@@ -62,6 +62,8 @@ struct BatteryBank {
     batteries: Vec<u8>,
 }
 
+const BATTERY_COUNT: usize = 12;
+
 impl BatteryBank {
     fn parse(data_string: &str) -> Result<BatteryBank, Box<dyn Error>> {
         let mut batteries = Vec::new();
@@ -71,27 +73,47 @@ impl BatteryBank {
         Ok(BatteryBank { batteries })
     }
 
-    fn joltage(&self) -> u8 {
-        let (mut highest, mut second_highest) = (0, 0);
-        for i in 0..self.batteries.len() - 1 {
-            let battery = self.batteries[i];
-            if battery > highest {
-                highest = battery;
-                second_highest = 0;
+    fn joltage(&self) -> u64 {
+        let (mut digits_left, mut highest_value, mut value_index, mut index) =
+            (BATTERY_COUNT, 0, 0, 0);
+        let mut selected_digits: Vec<u8> = Vec::new();
+        loop {
+            if index > self.batteries.len() - digits_left {
+                index = value_index + 1;
+                selected_digits.push(highest_value);
+                (highest_value, value_index) = (0, 0);
+                digits_left -= 1;
+                if digits_left == 0 {
+                    break;
+                }
             }
-            let next_battery = self.batteries[i + 1];
-            if next_battery > second_highest {
-                second_highest = next_battery;
+
+            let battery = self.batteries[index];
+            if battery > highest_value {
+                highest_value = battery;
+                value_index = index;
             }
+
+            index += 1;
         }
-        (highest * 10) + second_highest
+
+        Self::assemble_digits(&selected_digits)
+    }
+
+    fn assemble_digits(digits: &Vec<u8>) -> u64 {
+        let (mut result, mut multiplier) = (0, 100000000000);
+        for value in digits {
+            result += (*value as u64) * multiplier;
+            multiplier /= 10;
+        }
+        result
     }
 }
 
 fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
     let mut count: u64 = 0;
     for line in reader::get_lines(data_path)? {
-        count += BatteryBank::parse(&line)?.joltage() as u64;
+        count += BatteryBank::parse(&line)?.joltage();
     }
 
     Ok(count)
