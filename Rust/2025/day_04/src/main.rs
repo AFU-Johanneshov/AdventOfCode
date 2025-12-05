@@ -29,6 +29,17 @@ check that the tile being checked is within the array.
 
 Part Two:
 
+We now have permission to remove occupied tiles if they are accessible. Meaning occupied tiles that wasn't
+accessible could be accessible after another is removed.
+
+The fastest to implement solution to this would be to simply edit the is_accessible method to also remove
+the occupied tile if it is accessible.
+Then we would simply call accessible_tiles over and over again untill the return value is 0.
+
+It is not the most "efficient" solution, but it would be very easy to modify the existing code to work.
+A more efficient solution would require a larger redesign of the system. Not impossible but it would
+still demand quite a lot more work.
+
 
 
 */
@@ -75,23 +86,23 @@ impl Map {
         })
     }
 
-    fn accessable_tiles(&self) -> u64 {
-        let mut accessable_tiles = 0;
+    fn accessible_tiles(&self) -> u64 {
+        let mut accessible_tiles = 0;
         for y in 1..self.size_override + 1 {
             for x in 1..self.size_override + 1 {
                 if let Tile::Empty = self.grid[x][y] {
                     continue;
                 }
 
-                if self.is_accessable(x, y) {
-                    accessable_tiles += 1;
+                if self.is_accessible(x, y) {
+                    accessible_tiles += 1;
                 }
             }
         }
-        accessable_tiles
+        accessible_tiles
     }
 
-    fn is_accessable(&self, c_x: usize, c_y: usize) -> bool {
+    fn is_accessible(&self, c_x: usize, c_y: usize) -> bool {
         let mut occupied = 0;
         for y in c_y - 1..=c_y + 1 {
             for x in c_x - 1..=c_x + 1 {
@@ -120,7 +131,7 @@ impl Map {
 
 fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
     let map = Map::load_from_file(data_path)?;
-    Ok(map.accessable_tiles())
+    Ok(map.accessible_tiles())
 }
 
 fn main() {
@@ -132,7 +143,7 @@ fn main() {
 
 #[test]
 fn calculate_test() {
-    let expected_value = 13;
+    let expected_value = 43;
     match calculate("testdata.txt") {
         Ok(value) => assert_eq!(
             value, expected_value,
