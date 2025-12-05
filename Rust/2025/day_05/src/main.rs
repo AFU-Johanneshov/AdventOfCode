@@ -55,6 +55,7 @@ range.upper - range.lower
 
 */
 
+#[derive(Clone, Copy, Debug)]
 struct IDRange {
     upper: u64,
     lower: u64,
@@ -63,6 +64,35 @@ struct IDRange {
 impl IDRange {
     fn in_range(&self, value: &u64) -> bool {
         self.lower <= *value && *value <= self.upper
+    }
+
+    fn attempt_merge(&mut self, other: &IDRange) -> bool {
+        if !((self.upper >= other.lower && self.lower <= other.lower)
+            || (self.upper >= other.upper && self.lower <= other.upper)
+            || (self.upper <= other.upper && self.lower >= other.lower))
+        {
+            return false;
+        }
+
+        let new_upper = if self.upper >= other.upper {
+            self.upper
+        } else {
+            other.upper
+        };
+        let new_lower = if self.lower <= other.lower {
+            self.lower
+        } else {
+            other.lower
+        };
+
+        self.upper = new_upper;
+        self.lower = new_lower;
+
+        true
+    }
+
+    fn range_count(&self) -> u64 {
+        self.upper - self.lower + 1 // Add 1 since the range is inclusive.
     }
 
     fn parse(data_string: &str) -> Result<IDRange, Box<dyn Error>> {
@@ -139,10 +169,42 @@ fn compressed_calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
 }
 
 fn calculate_part_two(data_path: &str) -> Result<u64, Box<dyn Error>> {
-    todo!();
+    let lines: Vec<String> = reader::get_lines(data_path)?.collect();
+    let mut ranges: Vec<IDRange> = Vec::new();
+
+    for line in lines.iter().take_while(|line| !line.is_empty()) {
+        ranges.push(IDRange::compressed_parse(line)?);
+    }
+
+    let mut ranges_len = ranges.len();
+    let mut outer_index = 0;
+    while outer_index < ranges_len {
+        let mut range = ranges[outer_index];
+        let mut i = outer_index + 1;
+        while i < ranges_len {
+            let other_range = ranges[i];
+            if range.attempt_merge(&other_range) {
+                ranges.remove(i);
+                ranges[outer_index] = range;
+                i = outer_index + 1;
+                ranges_len -= 1;
+            } else {
+                i += 1;
+            }
+        }
+        outer_index += 1;
+    }
+
+    let mut count = 0;
+    for range in ranges {
+        count += range.range_count();
+    }
+
+    Ok(count)
 }
 
 fn main() {
+    println!("Part One:");
     match calculate("data.txt") {
         Ok(value) => println!("Result:\n{}", value),
         Err(err) => println!("Error occured:\n{}", err),
@@ -151,8 +213,8 @@ fn main() {
         Ok(value) => println!("Result:\n{}", value),
         Err(err) => println!("Error occured:\n{}", err),
     }
-    println!("Part Two:");
-    match calculate("data.txt") {
+    println!("\nPart Two:");
+    match calculate_part_two("data.txt") {
         Ok(value) => println!("Result:\n{}", value),
         Err(err) => println!("Error occured:\n{}", err),
     }
@@ -173,8 +235,8 @@ fn calculate_test() {
 
 #[test]
 fn calculate_part_two_test() {
-    let expected_value = 3;
-    match calculate("testdata.txt") {
+    let expected_value = 14;
+    match calculate_part_two("testdata.txt") {
         Ok(value) => assert_eq!(
             value, expected_value,
             "Program using testdata.txt finished but result was wrong! Expected: {} but received: {}",
@@ -196,17 +258,3 @@ fn compressed_calculate_test() {
         Err(err) => panic!("Error occured:\n{}", err),
     }
 }
-
-/*
-#[test]
-fn calculate_small_test() {
-    let expected_value = 0;
-    match calculate("smalltestdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Program using smalltestdata.txt finished but result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Error occured:\n{}", err),
-    }
-} // */
