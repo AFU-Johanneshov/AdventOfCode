@@ -21,6 +21,27 @@ This should be quite easy using string.split(" ") and filter.
 
 Part Two:
 
+This is pure evil.
+Now we need to read the values one column at a time.
+It seems the length of the numbers vary but the operator signals the index where the columns start.
+There is still one extra space between. This can be ignored since it should always be empty.
+So:
++   +
+01234
+Means that the first value starts at index 0 and ends at index 2 (Inclusive)
+
+I think the solution here could be to:
+Load all lines into lists of chars.
+Have a sum, temp_value and operator variable
+Iterate i from 0 to the length of the lists
+    Create a number by combining index i in all the number lists
+    if the char at index i in the operators list is a operator then:
+        Add temp_value to sum and clear the old temp_value
+        Set the operator variable to the operator we found
+
+    increase temp_value by using the operator on temp_value with the number
+Once the loop is done add temp_value to sum and return the result
+
 
 
 */
@@ -113,7 +134,7 @@ fn main() {
 
 #[test]
 fn calculate_test() {
-    let expected_value = 4277556;
+    let expected_value = 3263827;
     match calculate("testdata.txt", 3) {
         Ok(value) => assert_eq!(
             value, expected_value,
