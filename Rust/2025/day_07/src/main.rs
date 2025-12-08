@@ -42,11 +42,33 @@ the edge is at least one empty tile.
 
 Part Two:
 
+New we need to figure out how many different paths one beam can take. At first I was
+thinking this might be possible to solve with math alone, but I am too tired to figure
+that out at this moment...
+
+So, counting paths is the answer instead. Since one tile might carry multiple paths
+we can't use the same loop as before.
+
+I am thinking we use a queue that holds a "beam" struct, which would essentially be a
+2D vector representing the location of the beam.
+
+Loop dequeuing one beam at a time until the queue is empty
+    If the tile below the current is a:
+        Empty space:
+            Increase beam y position by one and add back to queue
+        Splitter:
+            Create two new beams with position y+1 x-1 and y+1 x+1
+            Add beams back to queue
+    Else If the beam has reached the bottom of the grid:
+        Increase timeline count by 1.
+
+Return timeline count
+
 
 
 */
 
-fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+fn calculate_part_one(data_path: &str) -> Result<u64, Box<dyn Error>> {
     let mut grid: Vec<Vec<char>> = reader::get_lines(data_path)?
         .map(|line| line.chars().collect())
         .collect();
@@ -75,17 +97,38 @@ fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
     Ok(splits)
 }
 
+fn calculate_part_two(data_path: &str) -> Result<u64, Box<dyn Error>> {
+    todo!();
+}
+
 fn main() {
-    match calculate("data.txt") {
-        Ok(value) => println!("Result:\n{}", value),
+    match calculate_part_one("data.txt") {
+        Ok(value) => println!("Part One Result:\n{}", value),
+        Err(err) => println!("Error occured:\n{}", err),
+    }
+    match calculate_part_two("data.txt") {
+        Ok(value) => println!("Part Two Result:\n{}", value),
         Err(err) => println!("Error occured:\n{}", err),
     }
 }
 
 #[test]
-fn calculate_test() {
+fn calculate_part_one_test() {
     let expected_value = 21;
-    match calculate("testdata.txt") {
+    match calculate_part_one("testdata.txt") {
+        Ok(value) => assert_eq!(
+            value, expected_value,
+            "Program using testdata.txt finished but result was wrong! Expected: {} but received: {}",
+            expected_value, value
+        ),
+        Err(err) => panic!("Error occured:\n{}", err),
+    }
+}
+
+#[test]
+fn calculate_part_two_test() {
+    let expected_value = 40;
+    match calculate_part_two("testdata.txt") {
         Ok(value) => assert_eq!(
             value, expected_value,
             "Program using testdata.txt finished but result was wrong! Expected: {} but received: {}",
