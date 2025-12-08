@@ -35,6 +35,9 @@ Iterate through the grid line by line until the second last line
                 Increase split counter by one
 return split count
 
+No need to check that the split beam is inside the grid as the closest a splitter is to
+the edge is at least one empty tile.
+
 
 
 Part Two:
@@ -44,9 +47,32 @@ Part Two:
 */
 
 fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-    let lines = reader::get_lines(data_path)?;
+    let mut grid: Vec<Vec<char>> = reader::get_lines(data_path)?
+        .map(|line| line.chars().collect())
+        .collect();
 
-    todo!();
+    let (grid_width, mut splits) = (grid[0].len(), 0);
+    if grid.iter().any(|line| line.len() != grid_width) {
+        return Err("The data lines does not have the same lenth!".into());
+    }
+
+    for y in 0..grid.len() - 1 {
+        for x in 0..grid_width {
+            if grid[y][x] == '|' || grid[y][x] == 'S' {
+                match grid[y + 1][x] {
+                    '.' | '|' => grid[y + 1][x] = '|',
+                    '^' => {
+                        grid[y + 1][x - 1] = '|';
+                        grid[y + 1][x + 1] = '|';
+                        splits += 1;
+                    }
+                    _ => return Err("Invalid character in grid!".into()),
+                }
+            }
+        }
+    }
+
+    Ok(splits)
 }
 
 fn main() {
