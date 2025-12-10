@@ -24,10 +24,31 @@ mod part_one {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    fn get_point(data: &str) -> Result<(i64, i64), Box<dyn Error>> {
+        let mut parts = data.split(',');
+        Ok((
+            parts.next().ok_or("E1: Corrupted input data!")?.parse()?,
+            parts.next().ok_or("E2: Corrupted input data!")?.parse()?,
+        ))
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let (mut points, mut largest_area) = (Vec::new(), 0);
+        for line in reader::get_lines(data_path)? {
+            points.push(get_point(&line)?);
+        }
+
+        for index in 0..points.len() {
+            let (p1_x, p1_y) = points[index];
+            for (p2_x, p2_y) in points.iter().skip(index + 1) {
+                let area = (((p2_x - p1_x).abs() + 1) * ((p2_y - p1_y).abs() + 1)) as u64;
+                if area > largest_area {
+                    largest_area = area;
+                }
+            }
+        }
+
+        Ok(largest_area)
     }
 }
 
