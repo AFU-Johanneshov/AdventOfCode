@@ -1,5 +1,3 @@
-use std::error::Error;
-
 mod reader;
 
 #[allow(dead_code)]
@@ -7,29 +5,47 @@ const PART_ONE_EXPECTED_TEST_VALUE: u64 = 0;
 #[allow(dead_code)]
 const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
 
+//
+
+//
+
 /*
 Part One
 ##################################################################################################
 
 */
+mod part_one {
+    use crate::reader;
+    use std::error::Error;
 
-fn calculate_part_one(data_path: &str) -> Result<u64, Box<dyn Error>> {
-    let lines = reader::get_lines(data_path)?;
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let lines = reader::get_lines(data_path)?;
 
-    Err("Not implemented!".into())
+        Err("NotImplemented: This problem has not been solved yet!".into())
+    }
 }
+
+//
+
+//
 
 /*
 Part Two
 ##################################################################################################
 
 */
+mod part_two {
+    use crate::reader;
+    use std::error::Error;
 
-fn calculate_part_two(data_path: &str) -> Result<u64, Box<dyn Error>> {
-    let lines = reader::get_lines(data_path)?;
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let lines = reader::get_lines(data_path)?;
 
-    Err("Not implemented!".into())
+        Err("NotImplemented: This problem has not been solved yet!".into())
+    }
 }
+
+//
 
 //
 
@@ -37,40 +53,42 @@ fn calculate_part_two(data_path: &str) -> Result<u64, Box<dyn Error>> {
 // ###############################################################################################
 
 fn main() {
-    println!("Part One Result: ");
-    match calculate_part_one("data.txt") {
-        Ok(value) => println!("{}", value),
-        Err(err) => println!("Error: {}", err),
+    println!("Running Program...");
+    print!("\nPart One ");
+    match part_one::calculate("data.txt") {
+        Ok(value) => println!("Result:\n{}", value),
+        Err(err) => println!("FAILED with error:\n{}", err),
     }
-    println!("\nPart Two Result: ");
-    match calculate_part_two("data.txt") {
-        Ok(value) => println!("{}", value),
-        Err(err) => println!("Error: {}", err),
+    print!("\nPart Two ");
+    match part_two::calculate("data.txt") {
+        Ok(value) => println!("Result:\n{}", value),
+        Err(err) => println!("FAILED with error:\n{}", err),
     }
+    println!();
 }
 
 #[test]
 fn calculate_part_one_test() {
     let expected_value = PART_ONE_EXPECTED_TEST_VALUE;
-    match calculate_part_one("testdata.txt") {
+    match part_one::calculate("testdata.txt") {
         Ok(value) => assert_eq!(
             value, expected_value,
             "Part One calculation completed successfully but the result was wrong! Expected: {} but received: {}",
             expected_value, value
         ),
-        Err(err) => panic!("Part One Error:\n{}", err),
+        Err(err) => panic!("Part One failed with error:\n{}\n", err),
     }
 }
 
 #[test]
 fn calculate_part_two_test() {
     let expected_value = PART_TWO_EXPECTED_TEST_VALUE;
-    match calculate_part_two("testdata.txt") {
+    match part_two::calculate("testdata.txt") {
         Ok(value) => assert_eq!(
             value, expected_value,
             "Part Two calculation completed successfully but the result was wrong! Expected: {} but received: {}",
             expected_value, value
         ),
-        Err(err) => panic!("Part Two Error:\n{}", err),
+        Err(err) => panic!("Part Two failed with error:\n{}\n", err),
     }
 }
