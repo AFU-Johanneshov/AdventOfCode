@@ -107,26 +107,224 @@ The outside of the new_p2 direction is outside the area
 The outside of any other points in the area is outside the area.
 IF any of these are false then the area is invalid.
 
+There is a risk a shape could still be marked as valid even though it is not with the above rules.
+But, I am not sure if it would actually be a problem, since the larger the rectangle is the higher
+the odds that it will be maked correctly. So hopefully it wont be a problem.
+
+I have confirmed the points are ordered in a clockwise directiion.
+I have also been able to confirm that the direction from points always turn +/- 90 degrees with
+each new point.
+
+Okay I found the issue. The case I mentioned above where a shape could be marked as valid is in
+fact what is causing it to fail.
+
+The points when placed in order form a sort of circle. BUT halfway through a few points basically
+swap to the opposite side of the circle and then back again.
+This causes there to be a thin line dividing the middle of the circle, which we do not detect as
+we only check for tiles next to the points. Not in the middle of the lines.
+
+So we need to modify the code to check along the path as well.
+
+
+Clockwise draw
+124991595 is too low!
+
+Counter Clockwise drawdd
+4616852656 is too high!
+
+4655615240 is too high!
+4750092396 is the old answer. The new one should not be that close in size!
 */
 mod part_two {
     use crate::reader;
-    use std::error::Error;
+    use core::panic;
+    use std::{error::Error, ops::Add, thread, time::Duration};
 
-    fn get_point(data: &str) -> Result<(i64, i64), Box<dyn Error>> {
-        let mut parts = data.split(',');
-        Ok((
-            parts.next().ok_or("E1: Corrupted input data!")?.parse()?,
-            parts.next().ok_or("E2: Corrupted input data!")?.parse()?,
-        ))
+    #[derive(Default, Debug, PartialEq, Eq, Clone)]
+    struct Point {
+        x: i64,
+        y: i64,
+    }
+
+    impl Add for &Point {
+        fn add(self, rhs: Self) -> Self::Output {
+            Point {
+                x: self.x + rhs.x,
+                y: self.y + rhs.y,
+            }
+        }
+
+        type Output = Point;
+    }
+
+    impl Point {
+        fn parse(data: &str) -> Result<Point, Box<dyn Error>> {
+            let mut parts = data.split(',');
+            Ok(Point {
+                x: parts.next().ok_or("E1: Corrupted input data!")?.parse()?,
+                y: parts.next().ok_or("E2: Corrupted input data!")?.parse()?,
+            })
+        }
+
+        fn dir(&self, other: &Point) -> Point {
+            Point {
+                x: (other.x - self.x).clamp(-1, 1),
+                y: (other.y - self.y).clamp(-1, 1),
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    struct Rectangle {
+        corner_1: Point,
+        corner_2: Point,
+    }
+
+    impl Rectangle {
+        fn parse(point_1: &Point, point_2: &Point) -> Rectangle {
+            /*Rectangle {
+                corner_1: point_1.clone(),
+                corner_2: point_2.clone(),
+            } // */
+
+            let (c1_x, c2_x) = {
+                if point_1.x >= point_2.x {
+                    (point_2.x, point_1.x)
+                } else {
+                    (point_1.x, point_2.x)
+                }
+            };
+            let (c1_y, c2_y) = {
+                if point_1.y >= point_2.y {
+                    (point_2.y, point_1.y)
+                } else {
+                    (point_1.y, point_2.y)
+                }
+            };
+            Rectangle {
+                corner_1: Point { x: c1_x, y: c1_y },
+                corner_2: Point { x: c2_x, y: c2_y },
+            } // */
+        }
+
+        fn is_valid(&self, points: &Vec<(Point, Point)>) -> bool {
+            let mut prev_dir = &points[points.len() - 1].1;
+            for i in 0..points.len() {
+                let (point, dir) = &points[i];
+                if *dir == outside(prev_dir) {
+                    if self.contains(&(&(point + dir) + &outside(dir))) {
+                        //println!("Rect outside!");
+                        return false;
+                    }
+                } else if self.contains(&(point + &outside(dir)))
+                    || self.contains(&(point + &outside(prev_dir)))
+                {
+                    /*
+                    println!("Rect: {:?} of size: {} is invalid!", self, self.area());
+                    println!(
+                        "Point: {:?} or {:?} is inside of the rectangle!",
+                        point + &outside(dir),
+                        point + &outside(prev_dir)
+                    );*/
+                    return false;
+                }
+                prev_dir = dir;
+            }
+
+            true
+        }
+
+        fn area(&self) -> u64 {
+            (((self.corner_2.x - self.corner_1.x).abs() + 1)
+                * ((self.corner_2.y - self.corner_1.y).abs() + 1)) as u64
+        }
+
+        fn contains(&self, point: &Point) -> bool {
+            point.x >= self.corner_1.x
+                && point.x <= self.corner_2.x
+                && point.y >= self.corner_1.y
+                && point.y <= self.corner_2.y
+        }
+    }
+
+    fn outside(dir: &Point) -> Point {
+        /*Point {
+            x: (-dir.y),
+            y: dir.x,
+        } // */
+
+        Point {
+            x: dir.y,
+            y: (-dir.x),
+        } // */
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let mut points = Vec::new();
         for line in reader::get_lines(data_path)? {
-            points.push(get_point(&line)?);
+            points.push((Point::parse(&line)?, Point::default()));
         }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+        // Get directions of all points.
+        for i in 0..points.len() - 1 {
+            //let outside = get_outside_dir(&points[i].0, &points[i + 1].0);
+            points[i].1 = Point::dir(&points[i].0, &points[i + 1].0);
+        }
+        let point_count = points.len();
+        //points[point_count - 1].1 = get_outside_dir(&points[points.len() - 1].0, &points[0].0);
+        points[point_count - 1].1 = Point::dir(&points[points.len() - 1].0, &points[0].0);
+
+        // Processing
+        let mut largest_area = 0;
+        for index in 0..points.len() {
+            let (point_1, p1_outside) = &points[index];
+            for (point_2, p2_outside) in points.iter().skip(index + 1) {
+                let rectangle = Rectangle::parse(&point_1, point_2);
+                let area = rectangle.area();
+                if area > largest_area {
+                    // Check rules...
+                    if rectangle.is_valid(&points) {
+                        largest_area = area;
+                    }
+                }
+            }
+        }
+
+        //println!("Points: \n\n{:?}", points);
+
+        Ok(largest_area)
+    }
+
+    pub fn draw_points(data_path: &str) -> Result<(), Box<dyn Error>> {
+        let mut points = Vec::new();
+        for line in reader::get_lines(data_path)? {
+            points.push((Point::parse(&line)?, Point::default()));
+        }
+
+        let mut grid = [['·'; 100]; 100];
+
+        for point in points {
+            let rounded_position = (point.0.x / 1000, point.0.y / 1000);
+            //let rounded_position = (point.0.x, point.0.y);
+            match grid[rounded_position.1 as usize][rounded_position.0 as usize] {
+                '·' => grid[rounded_position.1 as usize][rounded_position.0 as usize] = '1',
+                '1' => grid[rounded_position.1 as usize][rounded_position.0 as usize] = '2',
+                '2' => grid[rounded_position.1 as usize][rounded_position.0 as usize] = '3',
+                '3' => grid[rounded_position.1 as usize][rounded_position.0 as usize] = '4',
+                '4' => grid[rounded_position.1 as usize][rounded_position.0 as usize] = '5',
+                _ => grid[rounded_position.1 as usize][rounded_position.0 as usize] = 'E',
+            }
+            draw_grid(&grid);
+            thread::sleep(Duration::from_millis(30));
+        }
+
+        todo!();
+    }
+
+    fn draw_grid(grid: &[[char; 100]; 100]) {
+        for line in grid.iter() {
+            println!("{}", line.iter().collect::<String>());
+        }
     }
 }
 
@@ -150,6 +348,7 @@ fn main() {
         Err(err) => println!("FAILED with error:\n{}", err),
     }
     println!();
+    part_two::draw_points("data.txt");
 }
 
 #[test]
