@@ -1,9 +1,17 @@
 mod reader;
 
+#[cfg(test)]
+mod tests;
+
 #[allow(dead_code)]
-const PART_ONE_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 0;
 #[allow(dead_code)]
-const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+
+#[allow(dead_code)]
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+#[allow(dead_code)]
+pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
 //
 
@@ -65,30 +73,4 @@ fn main() {
         Err(err) => println!("FAILED with error:\n{}", err),
     }
     println!();
-}
-
-#[test]
-fn calculate_part_one_test() {
-    let expected_value = PART_ONE_EXPECTED_TEST_VALUE;
-    match part_one::calculate("testdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Part One calculation completed successfully but the result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Part One failed with error:\n{}\n", err),
-    }
-}
-
-#[test]
-fn calculate_part_two_test() {
-    let expected_value = PART_TWO_EXPECTED_TEST_VALUE;
-    match part_two::calculate("testdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Part Two calculation completed successfully but the result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Part Two failed with error:\n{}\n", err),
-    }
 }
