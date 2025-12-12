@@ -44,12 +44,37 @@ there.
 Then just dequeue the oldest state and create new states based on it using all available button
 combinations. Compare the result states with the desired pattern. If a match is found return the
 amount of steps to get there. If not then add all states back to the queue.
+
+#### Improvements after completion...
+
+A smarter more efficient way of doing it would be to track how many button presses each state
+takes. For example, pressing button 1 and then button 2 will yield the same result as pressing
+button 2 first and then nr 1.
+
+So instead of tracking each idividual path to get to that point we could just track that point
+and how many different button presses got us there, not their order.
+Add a "buttonpresses" array of u8 values to the queue. The steps value can be left alone.
+We can add a hashmap that takes in the lights array as key and holds steps as a value.
+Before pushing a new state to the queue check the hashmap if that light pattern has been
+reached already with fewer steps.
+Although it might be enough to use a hashset, since we should alwyas be taking the shorter
+steps first. Meaning if the hashmap contained the light pattern the steps there would always
+be the same or less. I.e. the new light pattern will never be added.
+
+Result: Adding a hashset and discarding duplicates improved processing time by a massive
+amount. In debug mode execution went from 3.200 seconds to 0.097 seconds.
+Release mode went from 0.310 seconds to 0.033 seconds.
+
+We can then
 */
 mod part_one {
     use crate::reader;
-    use std::{collections::VecDeque, error::Error};
+    use std::{
+        collections::{HashSet, VecDeque},
+        error::Error,
+    };
 
-    #[derive(Default, PartialEq, Eq, Debug)]
+    #[derive(Default, PartialEq, Eq, Debug, Hash, Clone, Copy)]
     struct Lights {
         lights: [bool; 10],
     }
@@ -89,28 +114,54 @@ mod part_one {
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let mut total_steps = 0;
+        /*
+        for line in reader::get_lines(data_path)? {
+            let mut parts = line.split(' ');
+
+            let desired_pattern = Lights::from_light_pattern(
+                parts
+                    .next()
+                    .ok_or_else(|| format!("Invalid format: {line}"))?,
+            )?;
+
+            let buttons = parts
+                .map(Lights::from_button)
+                .collect::<Result<Vec<_>, _>>()?;
+        }*/
+
         for line in reader::get_lines(data_path)? {
             let parts = line.split(' ').collect::<Vec<&str>>();
             let mut parts_iter = parts.iter();
             let parts_len = parts_iter.len();
 
+            let desired_pattern =
+                Lights::from_light_pattern(parts_iter.next().expect("This should never be None"))?;
+
+            let buttons = parts_iter
+                .take(parts_len - 2)
+                .map(|p| Lights::from_button(p))
+                .collect::<Result<Vec<_>, _>>()?;
+            // */
+            /*
             let mut buttons = Vec::new();
-            let desired_pattern = Lights::from_light_pattern(
-                parts_iter
-                    .next()
-                    .ok_or("Data string [{line}] does not follow the correct format!")?,
-            )?;
             for part in parts_iter.take(parts_len - 2) {
                 buttons.push(Lights::from_button(part)?);
-            }
-
-            let mut processing_queue = VecDeque::new();
-            processing_queue.push_back((Lights::default(), 0));
+            } // */
+            let mut pattern_lookup = HashSet::new();
+            let mut processing_queue = VecDeque::from(vec![(Lights::default(), 0)]);
             'outer: while let Some((lights, steps)) = processing_queue.pop_front() {
                 for button in &buttons {
                     let new_lights = lights.combine(button);
+                    if !pattern_lookup.insert(new_lights) {
+                        continue;
+                    }
                     if new_lights == desired_pattern {
                         total_steps += 1 + steps;
+                        println!(
+                            "Result found with {} left in queue at {} steps",
+                            processing_queue.len(),
+                            steps + 1
+                        );
                         break 'outer;
                     }
                     processing_queue.push_back((new_lights, steps + 1));
