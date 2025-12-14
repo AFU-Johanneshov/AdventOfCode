@@ -93,7 +93,7 @@ mod part_one {
             Ok(new_lights)
         }
 
-        fn from_button(data: &str) -> Result<Lights, Box<dyn Error>> {
+        fn from_button(data: &&str) -> Result<Lights, Box<dyn Error>> {
             let trimmed_data = data[1..data.len() - 1].split(',');
             let mut new_lights = Lights::default();
             for i in trimmed_data {
@@ -114,57 +114,30 @@ mod part_one {
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let mut total_steps = 0;
-        /*
-        for line in reader::get_lines(data_path)? {
-            let mut parts = line.split(' ');
-
-            let desired_pattern = Lights::from_light_pattern(
-                parts
-                    .next()
-                    .ok_or_else(|| format!("Invalid format: {line}"))?,
-            )?;
-
-            let buttons = parts
-                .map(Lights::from_button)
-                .collect::<Result<Vec<_>, _>>()?;
-        }*/
 
         for line in reader::get_lines(data_path)? {
             let parts = line.split(' ').collect::<Vec<&str>>();
-            let mut parts_iter = parts.iter();
-            let parts_len = parts_iter.len();
+            let (mut pattern_lookup, mut parts_iter) = (HashSet::new(), parts.iter());
+            let mut processing_queue = VecDeque::from(vec![(Lights::default(), 0)]);
+            let button_count = parts_iter.len() - 2; // -1 for first and -1 for last elements.
 
             let desired_pattern =
                 Lights::from_light_pattern(parts_iter.next().expect("This should never be None"))?;
 
             let buttons = parts_iter
-                .take(parts_len - 2)
-                .map(|p| Lights::from_button(p))
+                .take(button_count)
+                .map(Lights::from_button)
                 .collect::<Result<Vec<_>, _>>()?;
-            // */
-            /*
-            let mut buttons = Vec::new();
-            for part in parts_iter.take(parts_len - 2) {
-                buttons.push(Lights::from_button(part)?);
-            } // */
-            let mut pattern_lookup = HashSet::new();
-            let mut processing_queue = VecDeque::from(vec![(Lights::default(), 0)]);
+
             'outer: while let Some((lights, steps)) = processing_queue.pop_front() {
-                for button in &buttons {
-                    let new_lights = lights.combine(button);
-                    if !pattern_lookup.insert(new_lights) {
-                        continue;
+                for new_lights in buttons.iter().map(|b| lights.combine(b)) {
+                    if pattern_lookup.insert(new_lights) {
+                        if new_lights == desired_pattern {
+                            total_steps += 1 + steps;
+                            break 'outer;
+                        }
+                        processing_queue.push_back((new_lights, steps + 1));
                     }
-                    if new_lights == desired_pattern {
-                        total_steps += 1 + steps;
-                        println!(
-                            "Result found with {} left in queue at {} steps",
-                            processing_queue.len(),
-                            steps + 1
-                        );
-                        break 'outer;
-                    }
-                    processing_queue.push_back((new_lights, steps + 1));
                 }
             }
         }
