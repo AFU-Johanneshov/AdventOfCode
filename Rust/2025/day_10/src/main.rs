@@ -173,11 +173,24 @@ The initial idea wont work, at least in any reasonable amount of time.
 Some other approach is needed.
 I was thinking pathfinding might be the key if used with a heuristic, but I think that too would
 run into issues with the extreme amount of possible paths.
+
+So at this point I have been trying to learn about a whole math concept to try and solve this.
+Apparently, integer linear combination is the key?
+View buttons as blocks from now on in the text.
+And each target joltage in the array as a counter.
+
+My head hurts too much to do the math solution.
+I think that with proper filtering and some kind of heuristic it should be feasable to brute
+force it.
+
+This version is at least capable of solving the first line rather quickly, but then gets stuck
+on the second.
 */
 mod part_two {
     use crate::reader;
     use std::{
-        collections::{HashSet, VecDeque},
+        cmp::Ordering,
+        collections::{BinaryHeap, HashSet, VecDeque},
         error::Error,
     };
 
@@ -185,6 +198,34 @@ mod part_two {
     struct Joltage {
         lights: [u16; 10],
     }
+
+    #[derive(Clone, Copy, Default)]
+    struct QueueGroup {
+        jolatage: Joltage,
+        heuristic: i64,
+        steps: u64,
+    }
+
+    impl Ord for QueueGroup {
+        fn cmp(&self, other: &Self) -> Ordering {
+            //(self.heuristic).cmp(&(other.heuristic))
+            (other.heuristic).cmp(&(self.heuristic))
+        }
+    }
+
+    impl PartialOrd for QueueGroup {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    impl PartialEq for QueueGroup {
+        fn eq(&self, other: &Self) -> bool {
+            self.heuristic == other.heuristic
+        }
+    }
+
+    impl Eq for QueueGroup {}
 
     impl Joltage {
         fn from_joltage_pattern(data: &str) -> Result<Joltage, Box<dyn Error>> {
@@ -223,6 +264,14 @@ mod part_two {
             }
             true
         }
+
+        fn difference(&self, other: &Joltage) -> u64 {
+            let mut diff = 0;
+            for i in 0..self.lights.len() {
+                diff += (self.lights[i] - other.lights[i]) as u64;
+            }
+            diff
+        }
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
@@ -246,6 +295,30 @@ mod part_two {
                 parts_iter.next().expect("This should never fail since we ensure to only call next the correct amount of times."),
             )?;
 
+            let mut queue = BinaryHeap::new();
+            queue.push(QueueGroup::default());
+
+            'outer: while let Some(group) = queue.pop() {
+                for new_lights in buttons.iter().map(|b| group.jolatage.combine(b)) {
+                    if pattern_lookup.insert(new_lights) && new_lights.can_reach(&desired_pattern) {
+                        if new_lights == desired_pattern {
+                            total_steps += 1 + group.steps;
+                            break 'outer;
+                        }
+
+                        //println!("Light: {new_lights:?}");
+                        queue.push(QueueGroup {
+                            jolatage: new_lights,
+                            heuristic: desired_pattern.difference(&new_lights) as i64
+                                - group.steps as i64
+                                + 1,
+                            steps: group.steps + 1,
+                        });
+                    }
+                }
+            }
+
+            /*
             'outer: while let Some((lights, steps)) = processing_queue.pop_front() {
                 for new_lights in buttons.iter().map(|b| lights.combine(b)) {
                     if pattern_lookup.insert(new_lights) && new_lights.can_reach(&desired_pattern) {
@@ -253,11 +326,12 @@ mod part_two {
                             total_steps += 1 + steps;
                             break 'outer;
                         }
+
                         println!("Light: {new_lights:?}");
                         processing_queue.push_back((new_lights, steps + 1));
                     }
                 }
-            }
+            }*/
 
             println!("Completed line {line_nr}");
         }
