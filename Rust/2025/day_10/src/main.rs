@@ -246,60 +246,67 @@ improve it myself as a exercise to compensate for not technically "solving" it m
 */
 mod part_two {
     use crate::reader;
-    use std::{collections::HashMap, error::Error, iter::zip, time::Instant};
+    use std::{array, collections::HashMap, error::Error, iter::zip, time::Instant};
+    #[rustfmt::skip] macro_rules! combination_end { () => { vec![vec![]]}; }
+    #[rustfmt::skip] macro_rules! no_possible_combinations { () => { vec![]}; }
 
     #[derive(Default, PartialEq, Eq, Debug, Hash, Clone, Copy)]
     struct Joltage {
-        counters: [u16; 10],
+        values: [u16; 10],
+    }
+
+    impl From<[u16; 10]> for Joltage {
+        fn from(values: [u16; 10]) -> Self {
+            Joltage { values }
+        }
     }
 
     impl Joltage {
         fn from_joltage_pattern(data: &str) -> Result<Joltage, Box<dyn Error>> {
-            let trimmed_data = &data[1..data.len() - 1];
             let mut new_lights = Joltage::default();
-            for (i, data) in trimmed_data.split(',').enumerate() {
-                new_lights.counters[i] = data.parse()?;
+            for (i, int_str) in data[1..data.len() - 1].split(',').enumerate() {
+                new_lights.values[i] = int_str.parse()?;
             }
 
             Ok(new_lights)
         }
 
-        fn from_button(data: &&str) -> Result<Joltage, Box<dyn Error>> {
-            let trimmed_data = data[1..data.len() - 1].split(',');
+        fn from_button(data: &str) -> Result<Joltage, Box<dyn Error>> {
             let mut new_lights = Joltage::default();
-            for i in trimmed_data {
-                new_lights.counters[i.parse::<usize>()?] = 1;
+            for int_str in data[1..data.len() - 1].split(',') {
+                new_lights.values[int_str.parse::<usize>()?] = 1;
             }
 
             Ok(new_lights)
         }
 
-        fn combine(&self, other: &Joltage) -> Joltage {
-            Joltage {
-                counters: std::array::from_fn(|i| self.counters[i] + other.counters[i]),
-            }
+        fn combine(&mut self, rhs: &Joltage) {
+            self.values = array::from_fn(|i| self.values[i] + rhs.values[i])
         }
 
-        fn subtract_and_divide(&self, other: &Joltage) -> Joltage {
-            Joltage {
-                counters: std::array::from_fn(|i| (self.counters[i] - other.counters[i]) / 2),
-            }
+        fn subtract_and_divide(&self, rhs: &Joltage) -> Joltage {
+            array::from_fn(|i| (self.values[i] - rhs.values[i]) / 2).into()
+        }
+
+        fn lights(&self) -> [u16; 10] {
+            array::from_fn(|i| self.values[i] % 2)
         }
     }
 
-    fn combinations<T: Clone>(v: &[T], k: usize) -> Vec<Vec<T>> {
-        if k == 0 {
-            return vec![vec![]];
+    fn get_combinations<T: Clone>(blocks: &[T], combination_len: usize) -> Vec<Vec<T>> {
+        if combination_len == 0 {
+            return combination_end!(); // Equal to a Vec containing one empty Vec.
         }
-        if v.len() < k {
-            return vec![];
+
+        if blocks.len() < combination_len {
+            return no_possible_combinations!(); // Equal to a empty Vec
         }
 
         let mut result = Vec::new();
 
-        for i in 0..=v.len() - k {
-            let head = v[i].clone();
-            for mut tail in combinations(&v[i + 1..], k - 1) {
+        for i in 0..=blocks.len() - combination_len {
+            let head = blocks[i].clone();
+            for mut tail in get_combinations(&blocks[i + 1..], combination_len - 1) {
                 let mut combo = vec![head.clone()];
                 combo.append(&mut tail);
                 result.push(combo);
@@ -309,37 +316,38 @@ mod part_two {
         result
     }
 
-    fn patterns(blocks: Vec<Joltage>) -> HashMap<Joltage, u16> {
-        let blocks_count = blocks.len();
-        let mut out = HashMap::new();
+    fn get_patterns(blocks: Vec<Joltage>) -> HashMap<[u16; 10], HashMap<Joltage, u16>> {
+        let mut patterns: HashMap<[u16; 10], HashMap<Joltage, u16>> = HashMap::new();
 
-        for pattern_len in 0..blocks_count + 1 {
-            for buttons in combinations(&blocks, pattern_len) {
+        for pattern_len in 0..blocks.len() + 1 {
+            for buttons in get_combinations(&blocks, pattern_len) {
                 let mut pattern = Joltage::default();
-                buttons.iter().for_each(|j| {
-                    pattern = pattern.combine(j);
-                });
-                out.entry(pattern).or_insert(pattern_len as u16);
+                buttons.iter().for_each(|j| pattern.combine(j));
+
+                patterns
+                    .entry(pattern.lights())
+                    .or_default()
+                    .entry(pattern)
+                    .or_insert(pattern_len as u16);
             }
         }
 
-        out
+        patterns
     }
 
-    fn solve_single_aux(pattern_costs: &HashMap<Joltage, u16>, desired_pattern: Joltage) -> u64 {
-        if desired_pattern.counters.iter().sum::<u16>() == 0 {
+    fn solver(pattern_costs: &HashMap<[u16; 10], HashMap<Joltage, u16>>, target: Joltage) -> u16 {
+        if target.values.iter().sum::<u16>() == 0 {
             return 0;
         }
-        let mut answer = 1000000;
-        for (pattern, pattern_cost) in pattern_costs.iter() {
-            let valid = zip(pattern.counters, desired_pattern.counters)
-                .map(|(i, j)| ((i > j) as u16) | ((i ^ j) & 1))
-                .sum::<u16>()
-                == 0;
-            if valid {
-                let new_goal = desired_pattern.subtract_and_divide(pattern);
-                answer = answer
-                    .min(*pattern_cost as u64 + (2 * solve_single_aux(pattern_costs, new_goal)));
+        let mut answer = 10000;
+        let goal_pattern = array::from_fn(|i| target.values[i] % 2);
+        let Some(patterns) = pattern_costs.get(&goal_pattern) else {
+            return answer;
+        };
+        for (pattern, pattern_cost) in patterns.iter() {
+            if zip(pattern.values, target.values).all(|(p, d)| p <= d && p % 2 == d % 2) {
+                let new_goal = target.subtract_and_divide(pattern);
+                answer = answer.min(*pattern_cost + (2 * solver(pattern_costs, new_goal)));
             }
         }
         answer
@@ -349,28 +357,30 @@ mod part_two {
         let mut total_steps = 0;
 
         for line in reader::get_lines(data_path)? {
+            #[cfg(debug_assertions)] // Only compile this if in Debug mode
             let start_time = Instant::now();
 
             let parts = line.split(' ').collect::<Vec<&str>>();
-            let mut parts_iter = parts.iter().skip(1); // Skip first element.
-            let block_count = parts_iter.len() - 1; // -1 for last elements.
+            let (mut blocks, mut cache) = (Vec::new(), None);
 
-            let mut blocks = Vec::new();
-            for _ in 0..block_count {
-                blocks.push(Joltage::from_button(
-                    parts_iter.next().expect("This should never fail since we ensure to only call next the correct amount of times."),
-                )?);
+            for s in parts.iter().skip(1) {
+                if let Some(v) = cache {
+                    blocks.push(Joltage::from_button(v)?);
+                }
+                cache = Some(s);
             }
+            let desired_pattern =
+                Joltage::from_joltage_pattern(cache.ok_or("Invalid data line format!")?)?;
 
-            let desired_pattern = Joltage::from_joltage_pattern(
-                parts_iter.next().expect("This should never fail since we ensure to only call next the correct amount of times."),
-            )?;
+            let steps = solver(&get_patterns(blocks), desired_pattern);
+            total_steps += steps as u64;
 
-            let subanswer = solve_single_aux(&patterns(blocks), desired_pattern);
-            total_steps += subanswer;
-
-            println!("Completed line, steps: {}", subanswer);
-            println!("In {:?} time", Instant::now() - start_time,);
+            #[cfg(debug_assertions)] // Only compile this if in Debug mode
+            println!(
+                "Found {} steps in {:?} time",
+                steps,
+                Instant::now() - start_time,
+            );
         }
         Ok(total_steps)
     }
