@@ -57,12 +57,40 @@ To check if a id has been visited before simply check if the value exists in the
 */
 mod part_one {
     use crate::reader;
-    use std::error::Error;
+    use std::{
+        collections::{HashMap, HashSet},
+        error::Error,
+    };
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let lines = reader::get_lines(data_path)?;
+        let mut connections: HashMap<String, (Vec<String>, u64)> = HashMap::new();
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+        for line in lines {
+            let mut s = line.split(": ");
+            let source = s.next().ok_or("E1: Invalid data format!")?;
+            for o in s.next().ok_or("")?.split(" ") {
+                connections
+                    .entry(o.to_string())
+                    .or_default()
+                    .0
+                    .push(source.to_string());
+            }
+        }
+
+        connections.entry("out".to_string()).or_default().1 = 1;
+
+        let mut path_trace: HashSet<String> = HashSet::new();
+        // I don't think we need to add "out" since it should not point to any other id, meaning
+        // it should never be possible to need to check if it has been visited.
+
+        solver("out".to_string(), &mut path_trace);
+
+        Ok(connections.entry("you".to_string()).or_default().1)
+    }
+
+    fn solver(current_id: String, path_trace: &mut HashSet<String>) {
+        todo!();
     }
 }
 
