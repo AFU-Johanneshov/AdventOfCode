@@ -3,9 +3,10 @@ use crate::{
     PART_TWO_EXPECTED_TEST_VALUE, PART_TWO_EXPECTED_VALUE,
 };
 
-fn test_configured(expected_value: u64) -> Option<u64> {
+/// Checks if the provided expected_value has been set, returning it if it has.
+fn test_configured<T: Default + PartialEq>(expected_value: T) -> Option<T> {
     match expected_value {
-        value if value != 0 => Some(value),
+        value if value != T::default() => Some(value),
         _ => None,
     }
 }
