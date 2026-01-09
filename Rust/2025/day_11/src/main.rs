@@ -182,6 +182,10 @@ I just realised I probably overcomplicated both part one and two...
 I try to cache the path counts to decrease the amount of work needed, but I still iterate through
 every possible path. Meaning I might as well just not cache anything and instead add one to a
 counter each time "out" is reached... :/
+
+Update again:
+I still stand by what I said earlier, but some of the tricks are probably still good. Mainly the
+dead end caching.
 */
 mod part_two {
     use crate::reader;
@@ -225,17 +229,18 @@ mod part_two {
         connections: &mut HashMap<String, (Vec<String>, u64, bool, bool)>,
         last_cost: u64,
     ) -> Result<bool, Box<dyn Error>> {
-        let (connected_ids, path_count, visited, dead_end) = connections
+        let (connected_ids, _, _, dead_end) = connections
             .get(&current_id)
             .ok_or("E2: Current id does not exist in the connections hashmap!")?
             .clone();
 
         if dead_end {
-            return Ok(false);
+            return Ok(true);
         }
 
         let mut dead_end = true;
 
+        /*
         for connected_id in connected_ids {
             if (path_trace.insert(connected_id.to_string()) && current_id != "out")
                 && (connected_id != "out"
@@ -277,6 +282,34 @@ mod part_two {
             .get_mut(&current_id)
             .ok_or("E6: current_id does not exist in the connections hashmap!")?
             .2 = true;
+        */
+
+        for connected_id in connected_ids {
+            if connected_id == "out" {
+                if path_trace.contains("dac") && path_trace.contains("fft") {
+                    connections
+                        .get_mut("out")
+                        .ok_or("E3: out does not exist in the connections hashmap!")?
+                        .1 += 1;
+                    dead_end = false;
+                    println!("\nPath found!\n");
+                } else {
+                    print!("O");
+                }
+            } else if path_trace.insert(connected_id.clone()) {
+                if solver(connected_id, path_trace, connections, 0)? {
+                    dead_end = false;
+                }
+            }
+        }
+
+        if dead_end {
+            connections
+                .get_mut(&current_id)
+                .ok_or("E6: current_id does not exist in the connections hashmap!")?
+                .2 = true;
+        }
+
         path_trace.remove(&current_id);
         Ok(dead_end)
     }
