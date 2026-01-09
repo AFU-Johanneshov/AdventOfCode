@@ -54,6 +54,14 @@ And at the end remove it again.
 To check if a id has been visited before simply check if the value exists in the hashset.
     (To decrease the amount of uses of the hashset the addition of ids to the hashset could be
      combined with the visited check)
+
+Update:
+I found that the reverse search was kind of pointless. It did work for tests, but the full data
+took ages so I went back to searching the correct direction.
+
+A number of optimizations where also added to try and get past the ages long calculation, which
+works just as well for the normal search too. Although I am usure if they are actually needed
+now.
 */
 mod part_one {
     use crate::reader;
@@ -170,6 +178,18 @@ mod part_one {
 /*
 Part Two
 ##################################################################################################
+
+We now need to go from "svr" to "out", but only count the paths that pass both "dac" and "fft".
+
+This should actually be fairly easy with the Part One code if we just modify the start point, and
+then any time "out" is reached we simply check if the visited hashset contains both "dac" and
+"fft". If it does then add the path count to the end.
+However this causes potential issues since a valid path might combine with a non valid one. In
+those cases we need to ensure we only count the valid paths and ignore the invalid ones.
+
+My first thought is to use the dead end boolean. If a path is a dead end we should "clean up" the
+path count until we reach a path that is valid. Basically, subtract the invalid path cost from
+the existing path cost.
 
 */
 mod part_two {
