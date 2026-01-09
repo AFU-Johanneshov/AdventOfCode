@@ -64,11 +64,12 @@ mod part_one {
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let lines = reader::get_lines(data_path)?;
-        let mut connections: HashMap<String, (Vec<String>, u64)> = HashMap::new();
+        let mut connections: HashMap<String, (Vec<String>, u64, bool, bool)> = HashMap::new();
 
         for line in lines {
             let mut s = line.split(": ");
             let source = s.next().ok_or("E1: Invalid data format!")?;
+            connections.entry(source.to_string()).or_default();
             for o in s.next().ok_or("")?.split(" ") {
                 connections
                     .entry(o.to_string())
@@ -84,13 +85,77 @@ mod part_one {
         // I don't think we need to add "out" since it should not point to any other id, meaning
         // it should never be possible to need to check if it has been visited.
 
-        solver("out".to_string(), &mut path_trace);
+        //println!("{connections:?}");
+        solver("out".to_string(), &mut path_trace, &mut connections, 0)?;
+        println!("\n\n{connections:?}\n");
+        //todo!();
 
         Ok(connections.entry("you".to_string()).or_default().1)
     }
 
-    fn solver(current_id: String, path_trace: &mut HashSet<String>) {
-        todo!();
+    fn solver(
+        current_id: String,
+        path_trace: &mut HashSet<String>,
+        connections: &mut HashMap<String, (Vec<String>, u64, bool, bool)>,
+        last_cost: u64,
+    ) -> Result<bool, Box<dyn Error>> {
+        let (connected_ids, path_count, visited, dead_end) = connections
+            .get(&current_id)
+            .ok_or("E2: Current id does not exist in the connections hashmap!")?
+            .clone();
+
+        if dead_end {
+            return Ok(false);
+        }
+
+        let mut dead_end = true;
+
+        if current_id == "you" {
+            println!("Reached you. Total paths: {path_count}");
+            //return Ok(());
+        }
+
+        if visited {
+            println!("{} has been visited before!", current_id);
+        } else {
+            println!("{} has not been visited before!", current_id);
+        }
+
+        for connected_id in connected_ids {
+            if path_trace.insert(connected_id.to_string()) && current_id != "you" {
+                let connected_old_cost = connections
+                    .get(&connected_id)
+                    .ok_or("E5: connected_id does not exist in the connections hashmap!")?
+                    .1;
+                if !visited {
+                    connections
+                        .get_mut(&connected_id)
+                        .ok_or(format!(
+                            "E3: connected_id [{}] does not exist in the connections hashmap!",
+                            connected_id
+                        ))?
+                        .1 += path_count;
+                } else {
+                    connections
+                        .get_mut(&connected_id)
+                        .ok_or(format!(
+                            "E4: connected_id [{}] does not exist in the connections hashmap!",
+                            connected_id
+                        ))?
+                        .1 += path_count - last_cost;
+                }
+
+                if solver(connected_id, path_trace, connections, connected_old_cost)? {
+                    dead_end = false;
+                }
+            }
+        }
+        connections
+            .get_mut(&current_id)
+            .ok_or("E6: current_id does not exist in the connections hashmap!")?
+            .2 = true;
+        path_trace.remove(&current_id);
+        Ok(dead_end)
     }
 }
 
