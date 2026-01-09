@@ -186,6 +186,37 @@ counter each time "out" is reached... :/
 Update again:
 I still stand by what I said earlier, but some of the tricks are probably still good. Mainly the
 dead end caching.
+
+Update 3:
+I have realised that the amount of paths that exists from "svr" to out is much much higher than
+there are from "you". Meaning some optimization or rethinking is required.
+At the moment I am thinking maybe it is a good idea to split the calculation into parts.
+We only care about paths from svr to out that pass through "dac" and "fft". No matter which is
+first. So, would it be benefitial to search in steps instead? First find how many paths exist
+from "svr" to "dac" without passing out/fft, and then from "svr" to "fft" without passing
+out/dac. Then find the amount of paths from dac to fft, and fft to dac.
+
+Basically we want a recursive seach function that finds all paths from "start" to "goal" that
+doesn't pass any ids that match those in a "blocked" list. The blocked list could be made by
+simply adding the blocked ids to the path_trace HashSet before starting the function. That
+would make it so each time any blocked id is reached it is already marked as part of the path,
+and therefor can't be added again.
+
+Then we just add the count of the two possible path sequences together.
+svr->dac->fft->out and
+svr->fft->dac->out
+
+Update 4:
+Once again I underestimated the amount of possible paths.
+I think chaching results is a must, but the way I did it before is not good enough.
+If we cache how many paths exist from each node we visit to the goal we should be able to
+ensure we don't calculate any nodes twice.
+If a we check a node and it has a path value, we return that value instead of continuing.
+
+Results:
+160 is too low
+4643476320 is too low ??? What!? Quite understandable that the calculation took ages if there
+4643476320are more than 4643476320 paths...
 */
 mod part_two {
     use crate::reader;
@@ -194,36 +225,146 @@ mod part_two {
         error::Error,
     };
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    struct DeviceId(u16);
+
+    impl DeviceId {
+        fn new(id_string: &str) -> Result<DeviceId, Box<dyn Error>> {
+            let mut multiplier = 1;
+            let mut result = 0;
+            for c in id_string.chars().rev() {
+                if !c.is_ascii_lowercase() {
+                    return Err(format!(
+                        "Invalid charcther [{}] in data string [{}]!",
+                        c, id_string
+                    )
+                    .into());
+                }
+                result += (c as u8 - b'a') as u16 * multiplier;
+                multiplier *= 26;
+            }
+            Ok(DeviceId(result))
+        }
+    }
+
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let lines = reader::get_lines(data_path)?;
-        let mut connections: HashMap<String, (Vec<String>, u64, bool, bool)> = HashMap::new();
+        //let mut connections: HashMap<String, (Vec<String>, u64, bool, bool)> = HashMap::new();
+        let mut devices: HashMap<DeviceId, (Vec<DeviceId>, Option<u64>)> = HashMap::new();
 
         for line in lines {
-            let mut s = line.split(": ");
-            let source = s.next().ok_or("E1: Invalid data format!")?;
-            connections.entry(source.to_string()).or_default();
-            for o in s.next().ok_or("")?.split(" ") {
-                connections
-                    .entry(source.to_string())
-                    .or_default()
-                    .0
-                    .push(o.to_string());
+            let mut parts = line.split(": ");
+            let source = DeviceId::new(parts.next().ok_or("E1: Invalid data format!")?)?;
+            let (connections, _) = devices.entry(source).or_default();
+            for part in parts.next().ok_or("")?.split(" ") {
+                connections.push(DeviceId::new(part)?);
             }
         }
 
-        connections.entry("svr".to_string()).or_default().1 = 1;
-        connections.entry("out".to_string()).or_default();
+        //connections.entry("svr".to_string()).or_default().1 = 1;
+        //connections.entry("out".to_string()).or_default();
 
-        let mut path_trace: HashSet<String> = HashSet::new();
+        let svr = DeviceId::new("svr")?;
+        let dac = DeviceId::new("dac")?;
+        let fft = DeviceId::new("fft")?;
+        let out = DeviceId::new("out")?;
+        println!(
+            "\nsvr: {:?}\ndac: {:?}\nfft: {:?}\nout: {:?}",
+            svr, dac, fft, out
+        );
+
+        let mut result = 0;
+
+        result += count_paths(vec![svr, dac, fft, out], &devices)?;
+        result += count_paths(vec![svr, fft, dac, out], &devices)?;
+
         // I don't think we need to add "out" since it should not point to any other id, meaning
         // it should never be possible to need to check if it has been visited.
 
-        solver("svr".to_string(), &mut path_trace, &mut connections, 0)?;
+        //solver("svr".to_string(), &mut path_trace, &mut connections, 0)?;
 
-        Ok(connections.entry("out".to_string()).or_default().1)
+        //Ok(connections.entry("out".to_string()).or_default().1)
+        Ok(result)
+    }
+
+    fn count_paths(
+        mandatory_nodes_in_order: Vec<DeviceId>,
+        devices: &HashMap<DeviceId, (Vec<DeviceId>, Option<u64>)>,
+    ) -> Result<u64, Box<dyn Error>> {
+        let mut paths = 1;
+        for i in 0..mandatory_nodes_in_order.len() - 1 {
+            let mut path_trace: HashSet<DeviceId> = HashSet::new();
+            for node in mandatory_nodes_in_order.iter().take(i) {
+                path_trace.insert(*node);
+            }
+            for node in mandatory_nodes_in_order.iter().skip(i + 2) {
+                path_trace.insert(*node);
+            }
+
+            println!("path_trace: {:?}", path_trace);
+            let r = solver(
+                mandatory_nodes_in_order[i],
+                mandatory_nodes_in_order[i + 1],
+                &mut path_trace,
+                &mut devices.clone(),
+            )?;
+            println!(
+                "Found {} paths between {:?} and {:?}",
+                r,
+                mandatory_nodes_in_order[i],
+                mandatory_nodes_in_order[i + 1]
+            );
+            paths *= r;
+        }
+
+        Ok(paths)
     }
 
     fn solver(
+        current: DeviceId,
+        goal: DeviceId,
+        path_trace: &mut HashSet<DeviceId>,
+        connections: &mut HashMap<DeviceId, (Vec<DeviceId>, Option<u64>)>,
+    ) -> Result<u64, Box<dyn Error>> {
+        let (connected_ids, paths_to_goal) = connections
+            .get(&current)
+            .ok_or(format!(
+                "E2: [{:?}] does not exist in the connections hashmap!",
+                current
+            ))?
+            .clone();
+
+        if let Some(paths) = paths_to_goal {
+            return Ok(paths);
+        }
+
+        let mut result = 0;
+        for connected_id in connected_ids {
+            if connected_id == goal {
+                result += 1;
+            } else if path_trace.insert(connected_id) {
+                result += solver(connected_id, goal, path_trace, connections)?;
+            }
+        }
+
+        //if result == 0 {
+        // No path to goal exist from here so mark it as a dead end.
+        connections
+            .get_mut(&current)
+            .ok_or(format!(
+                "E3: [{:?}] does not exist in the connections hashmap!",
+                current
+            ))?
+            .1 = Some(result);
+        //}
+
+        path_trace.remove(&current);
+
+        Ok(result)
+    }
+
+    /*
+    fn solver2(
         current_id: String,
         path_trace: &mut HashSet<String>,
         connections: &mut HashMap<String, (Vec<String>, u64, bool, bool)>,
@@ -312,7 +453,7 @@ mod part_two {
 
         path_trace.remove(&current_id);
         Ok(dead_end)
-    }
+    } */
 }
 
 //
