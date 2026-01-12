@@ -1,3 +1,5 @@
+use std::fs;
+
 use crate::{
     part_one, part_two, PART_ONE_EXPECTED_TEST_VALUE, PART_ONE_EXPECTED_VALUE,
     PART_TWO_EXPECTED_TEST_VALUE, PART_TWO_EXPECTED_VALUE,
@@ -47,7 +49,19 @@ fn calculate_part_two_example() {
     let Some(expected_value) = test_configured(PART_TWO_EXPECTED_TEST_VALUE) else {
         return;
     };
-    match part_two::calculate("testdata.txt") {
+
+    // Use testdata_2.txt if it exist, otherwise default to testdata.txt
+    let testdata_file = {
+        if fs::exists("testdata_2.txt").is_ok_and(|b| b) {
+            "testdata_2.txt"
+        } else {
+            "testdata.txt"
+        }
+    };
+
+    println!("Using data file: {}", testdata_file);
+
+    match part_two::calculate(testdata_file) {
             Ok(value) => assert_eq!(
                 value, expected_value,
                 "Part Two calculation completed successfully but the result was wrong! Expected: {} but received: {}",
