@@ -217,6 +217,7 @@ Results:
 160 is too low
 4643476320 is too low ??? What!? Quite understandable that the calculation took ages if there
 are more than 4643476320 paths...
+303012373210128 was the correct answer. Thats a lot of paths!
 */
 mod part_two {
     use crate::{reader, PART_ONE_EXPECTED_VALUE};
@@ -341,6 +342,7 @@ mod part_two {
             .clone();
 
         if let Some(paths) = paths_to_goal {
+            path_trace.remove(&current);
             return Ok(paths);
         }
 
