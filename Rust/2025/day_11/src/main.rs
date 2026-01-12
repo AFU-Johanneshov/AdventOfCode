@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_VALUE: u64 = 615;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 2;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 303012373210128;
 
 //
 
@@ -196,7 +196,7 @@ first. So, would it be benefitial to search in steps instead? First find how man
 from "svr" to "dac" without passing out/fft, and then from "svr" to "fft" without passing
 out/dac. Then find the amount of paths from dac to fft, and fft to dac.
 
-Basically we want a recursive seach function that finds all paths from "start" to "goal" that
+Basically we want a recursive search function that finds all paths from "start" to "goal" that
 doesn't pass any ids that match those in a "blocked" list. The blocked list could be made by
 simply adding the blocked ids to the path_trace HashSet before starting the function. That
 would make it so each time any blocked id is reached it is already marked as part of the path,
@@ -220,7 +220,7 @@ are more than 4643476320 paths...
 303012373210128 was the correct answer. Thats a lot of paths!
 */
 mod part_two {
-    use crate::{reader, PART_ONE_EXPECTED_VALUE};
+    use crate::reader;
     use std::{
         collections::{HashMap, HashSet},
         error::Error,
@@ -229,6 +229,11 @@ mod part_two {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     struct DeviceId(u16);
 
+    const SVR: DeviceId = DeviceId(12731);
+    const DAC: DeviceId = DeviceId(2030);
+    const FFT: DeviceId = DeviceId(3529);
+    const OUT: DeviceId = DeviceId(10003);
+
     impl DeviceId {
         fn new(id_string: &str) -> Result<DeviceId, Box<dyn Error>> {
             let mut multiplier = 1;
@@ -236,7 +241,7 @@ mod part_two {
             for c in id_string.chars().rev() {
                 if !c.is_ascii_lowercase() {
                     return Err(format!(
-                        "Invalid charcther [{}] in data string [{}]!",
+                        "E1: Invalid charcther [{}] in data string [{}]!",
                         c, id_string
                     )
                     .into());
@@ -249,105 +254,75 @@ mod part_two {
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
         let mut devices: HashMap<DeviceId, (Vec<DeviceId>, Option<u64>)> = HashMap::new();
 
-        for line in lines {
+        for line in reader::get_lines(data_path)? {
             let mut parts = line.split(": ");
-            let source = DeviceId::new(parts.next().ok_or("E1: Invalid data format!")?)?;
+            let source = DeviceId::new(parts.next().ok_or("E2: Invalid data format!")?)?;
+
             let (connections, _) = devices.entry(source).or_default();
             for part in parts.next().ok_or("")?.split(" ") {
                 connections.push(DeviceId::new(part)?);
             }
         }
 
-        let svr = DeviceId::new("svr")?;
-        let dac = DeviceId::new("dac")?;
-        let fft = DeviceId::new("fft")?;
-        let out = DeviceId::new("out")?;
-
-        println!(
-            "\nPart One task should return 615, we got: {}\n",
-            solver(
-                DeviceId::new("you")?,
-                out,
-                &mut HashSet::new(),
-                &mut devices.clone()
-            )?
-        );
-
-        assert_eq!(
-            PART_ONE_EXPECTED_VALUE,
-            count_paths(vec![DeviceId::new("you")?, out], &devices)?
-        );
-
         let mut result = 0;
-
-        result += count_paths(vec![svr, dac, fft, out], &devices)?;
-        result += count_paths(vec![svr, fft, dac, out], &devices)?;
-
-        println!(
-            "Paths test: {}",
-            count_paths(vec![DeviceId::new("you")?, out], &devices)?
-        );
-
+        result += count_paths(vec![SVR, DAC, FFT, OUT], &devices)?;
+        result += count_paths(vec![SVR, FFT, DAC, OUT], &devices)?;
         Ok(result)
     }
 
+    /// Counts how many unique paths exist from the first to last manadatory nodes that also pass
+    /// the middle nodes in the correct order.
     fn count_paths(
         mandatory_nodes_in_order: Vec<DeviceId>,
         devices: &HashMap<DeviceId, (Vec<DeviceId>, Option<u64>)>,
     ) -> Result<u64, Box<dyn Error>> {
-        let mut paths = 1;
-        for i in 0..mandatory_nodes_in_order.len() - 1 {
+        let mut paths = 1; // Since we multiply the paths we can't start with 0.
+
+        // Multiplies the path count from node 1 to 2, 2 to 3 and so on together to get the result.
+        for index in 0..mandatory_nodes_in_order.len() - 1 {
             let mut path_trace: HashSet<DeviceId> = HashSet::new();
-            for node in mandatory_nodes_in_order.iter().take(i) {
+            for node in mandatory_nodes_in_order.iter().take(index) {
                 path_trace.insert(*node);
             }
-            for node in mandatory_nodes_in_order.iter().skip(i + 2) {
+            for node in mandatory_nodes_in_order.iter().skip(index + 2) {
                 path_trace.insert(*node);
             }
 
-            println!("path_trace: {:?}", path_trace);
-            let r = solver(
-                mandatory_nodes_in_order[i],
-                mandatory_nodes_in_order[i + 1],
+            paths *= solver(
+                mandatory_nodes_in_order[index],
+                mandatory_nodes_in_order[index + 1],
                 &mut path_trace,
                 &mut devices.clone(),
             )?;
-            println!(
-                "Found {} paths between {:?} and {:?}",
-                r,
-                mandatory_nodes_in_order[i],
-                mandatory_nodes_in_order[i + 1]
-            );
-            paths *= r;
         }
 
         Ok(paths)
     }
 
+    /// Counts how many unique paths exist from current to goal.
+    ///
+    /// path_trace is used to keep track of the current path to prevent loops.
+    /// connections holds the ids and any already computed path counts from said ids.
     fn solver(
         current: DeviceId,
         goal: DeviceId,
         path_trace: &mut HashSet<DeviceId>,
         connections: &mut HashMap<DeviceId, (Vec<DeviceId>, Option<u64>)>,
     ) -> Result<u64, Box<dyn Error>> {
-        let (connected_ids, paths_to_goal) = connections
-            .get(&current)
-            .ok_or(format!(
-                "E2: [{:?}] does not exist in the connections hashmap!",
-                current
-            ))?
-            .clone();
+        let (connected_ids, paths_to_goal) = connections.get(&current).ok_or(format!(
+            "E3: [{:?}] does not exist in the connections hashmap!",
+            current
+        ))?;
 
         if let Some(paths) = paths_to_goal {
             path_trace.remove(&current);
-            return Ok(paths);
+            return Ok(*paths);
         }
 
         let mut result = 0;
-        for connected_id in connected_ids {
+        for connected_id in connected_ids.clone() {
             if connected_id == goal {
                 result += 1;
             } else if path_trace.insert(connected_id) {
@@ -355,15 +330,9 @@ mod part_two {
             }
         }
 
-        connections
-            .get_mut(&current)
-            .ok_or(format!(
-                "E3: [{:?}] does not exist in the connections hashmap!",
-                current
-            ))?
-            .1 = Some(result);
-
         path_trace.remove(&current);
+        connections.get_mut(&current).unwrap().1 = Some(result);
+        // Unwrap is OK since we exit safely before this if current doesn't exist in connections.
 
         Ok(result)
     }
