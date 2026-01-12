@@ -1,0 +1,37 @@
+Holds information regarding the overall task of each puzzle and some categories that they fit in.
+
+##################################################################################################
+
+Puzzle summary:
+
+2024:
+  day_1: 
+
+2025:
+  day_1:
+  day_2:
+  day_3:
+  day_4:
+  day_5:
+  day_6:
+  day_7:
+  day_8:
+  day_9:
+  day_10:
+  day_11: Counting Unique Paths
+  day_12: 
+
+
+##################################################################################################
+
+Exercise categories:
+
+Caching:
+  2025:
+    day_11: Counting Unique Paths
+
+Recursion:
+  2025:
+    day_11: Counting Unique paths
+
+Pathfinding:
