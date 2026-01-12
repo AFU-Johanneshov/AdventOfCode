@@ -70,90 +70,80 @@ mod part_one {
         error::Error,
     };
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
-        let mut connections: HashMap<String, (Vec<String>, u64, bool, bool)> = HashMap::new();
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    struct DeviceId(u16);
 
-        for line in lines {
-            let mut s = line.split(": ");
-            let source = s.next().ok_or("E1: Invalid data format!")?;
-            connections.entry(source.to_string()).or_default();
-            for o in s.next().ok_or("")?.split(" ") {
-                connections
-                    .entry(source.to_string())
-                    .or_default()
-                    .0
-                    .push(o.to_string());
+    const OUT: DeviceId = DeviceId(10003);
+    const YOU: DeviceId = DeviceId(16608);
+
+    impl DeviceId {
+        fn new(id_string: &str) -> Result<DeviceId, Box<dyn Error>> {
+            let (mut multiplier, mut result) = (1, 0);
+            for c in id_string.chars().rev() {
+                if !c.is_ascii_lowercase() {
+                    return Err(format!(
+                        "E1: Invalid character [{}] in data string [{}]!",
+                        c, id_string
+                    )
+                    .into());
+                }
+                result += (c as u8 - b'a') as u16 * multiplier;
+                multiplier *= 26;
             }
+            Ok(DeviceId(result))
         }
-
-        connections.entry("you".to_string()).or_default().1 = 1;
-        connections.entry("out".to_string()).or_default();
-
-        let mut path_trace: HashSet<String> = HashSet::new();
-        // I don't think we need to add "out" since it should not point to any other id, meaning
-        // it should never be possible to need to check if it has been visited.
-
-        solver("you".to_string(), &mut path_trace, &mut connections, 0)?;
-
-        Ok(connections.entry("out".to_string()).or_default().1)
     }
 
-    fn solver(
-        current_id: String,
-        path_trace: &mut HashSet<String>,
-        connections: &mut HashMap<String, (Vec<String>, u64, bool, bool)>,
-        last_cost: u64,
-    ) -> Result<bool, Box<dyn Error>> {
-        let (connected_ids, path_count, visited, dead_end) = connections
-            .get(&current_id)
-            .ok_or("E2: Current id does not exist in the connections hashmap!")?
-            .clone();
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut devices: HashMap<DeviceId, (Vec<DeviceId>, Option<u64>)> = HashMap::new();
 
-        if dead_end {
-            //return Ok(false);
-        }
+        for line in reader::get_lines(data_path)? {
+            let mut parts = line.split(": ");
+            let source = DeviceId::new(parts.next().ok_or("E2: Invalid data format!")?)?;
 
-        let mut dead_end = true;
-
-        for connected_id in connected_ids {
-            if path_trace.insert(connected_id.to_string()) && current_id != "out" {
-                let connected_old_cost = connections
-                    .get(&connected_id)
-                    .ok_or(format!(
-                        "E5: connected_id [{}] does not exist in the connections hashmap!",
-                        connected_id
-                    ))?
-                    .1;
-                if !visited {
-                    connections
-                        .get_mut(&connected_id)
-                        .ok_or(format!(
-                            "E3: connected_id [{}] does not exist in the connections hashmap!",
-                            connected_id
-                        ))?
-                        .1 += path_count;
-                } else {
-                    connections
-                        .get_mut(&connected_id)
-                        .ok_or(format!(
-                            "E4: connected_id [{}] does not exist in the connections hashmap!",
-                            connected_id
-                        ))?
-                        .1 += path_count - last_cost;
-                }
-
-                if solver(connected_id, path_trace, connections, connected_old_cost)? {
-                    dead_end = false;
-                }
+            let (connections, _) = devices.entry(source).or_default();
+            for part in parts.next().ok_or("")?.split(" ") {
+                connections.push(DeviceId::new(part)?);
             }
         }
-        connections
-            .get_mut(&current_id)
-            .ok_or("E6: current_id does not exist in the connections hashmap!")?
-            .2 = true;
-        path_trace.remove(&current_id);
-        Ok(dead_end)
+
+        solver(YOU, OUT, &mut HashSet::new(), &mut devices)
+    }
+
+    /// Recursive solver that counts how many unique paths exist from current to goal.
+    ///
+    /// path_trace is used to keep track of the current path to prevent loops.
+    /// connections holds the ids and any already computed path counts from said ids.
+    fn solver(
+        current: DeviceId,
+        goal: DeviceId,
+        path_trace: &mut HashSet<DeviceId>,
+        connections: &mut HashMap<DeviceId, (Vec<DeviceId>, Option<u64>)>,
+    ) -> Result<u64, Box<dyn Error>> {
+        let (connected_ids, paths_to_goal) = connections.get(&current).ok_or(format!(
+            "E3: [{:?}] does not exist in the connections hashmap!",
+            current
+        ))?;
+
+        if let Some(paths) = paths_to_goal {
+            path_trace.remove(&current);
+            return Ok(*paths);
+        }
+
+        let mut result = 0;
+        for connected_id in connected_ids.clone() {
+            if connected_id == goal {
+                result += 1;
+            } else if path_trace.insert(connected_id) {
+                result += solver(connected_id, goal, path_trace, connections)?;
+            }
+        }
+
+        path_trace.remove(&current);
+        connections.get_mut(&current).unwrap().1 = Some(result);
+        // Unwrap is OK since we exit safely before this if current doesn't exist in connections.
+
+        Ok(result)
     }
 }
 
@@ -241,7 +231,7 @@ mod part_two {
             for c in id_string.chars().rev() {
                 if !c.is_ascii_lowercase() {
                     return Err(format!(
-                        "E1: Invalid charcther [{}] in data string [{}]!",
+                        "E1: Invalid character [{}] in data string [{}]!",
                         c, id_string
                     )
                     .into());
@@ -301,7 +291,7 @@ mod part_two {
         Ok(paths)
     }
 
-    /// Counts how many unique paths exist from current to goal.
+    /// Recursive solver that counts how many unique paths exist from current to goal.
     ///
     /// path_trace is used to keep track of the current path to prevent loops.
     /// connections holds the ids and any already computed path counts from said ids.
