@@ -90,6 +90,21 @@ mod part_one {
         }
         Ok(result)
     }
+
+    /* fn calculate psudo code
+        [result] = 0;
+        Iterate through all region lines [line], starting at line 30 to skip the shapes part.
+            Split [line] at any non-numeric char.
+                Filter out any resulting part that is empty.
+                Parse a integer from all parts who passed the filter. Since we split at all
+                non-numeric chars the only characters that can exist in the parts are numbers.
+                Create an iterator [numbers] over the resulting numbers.
+            Multiply the two first numbers in [numbers] by each other to get [region_area].
+            Add all remaining numbers in [numbers] together then multiply by 9 to get the total area
+            to guarantee the shapes fit. [shapes_area]
+            if [shapes_area] is less or equal to [region_area] then add 1 to [result]
+        Return [result]
+    */
 }
 
 //
@@ -102,12 +117,9 @@ Part Two
 
 */
 mod part_two {
-    use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
-
+    pub fn calculate(_data_path: &str) -> Result<u64, Box<dyn Error>> {
         Err("NotImplemented: This problem has not been solved yet!".into())
     }
 
