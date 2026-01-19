@@ -44,6 +44,27 @@ Then use that as a base to place a set of shapes in the most efficient way possi
 Or maybe we could make "educated" guesses if they fit or not. If estimated correctly it might
 be good enough to be correct all the time. Maybe...
 
+0: 7
+1: 5
+2: 7
+3: 6
+4: 7
+5: 7
+
+161 + 205 + 189 + 180 + 203 + 217 = 1155
+39 * 42 = 936
+
+Edit:
+
+:/
+I am mad.
+This puzzle is extremely difficult and basically impossible unless you have prior knowledge about
+advanced programming and computer science stuff. At least if you look at the stupid example it
+gives you. I am NEVER trusting the examples to represent the actual problem again.
+Never assume that the data follows the same rules as the example data.
+
+Spent so much time trying to figure out wtf it is one should do here since supposedly the
+solutions should be possible to made rather simple.
 */
 mod part_one {
     use crate::reader;
@@ -54,6 +75,7 @@ mod part_one {
     #[derive(Clone, Copy, Default, Debug)]
     pub struct Shape {
         grid: [[bool; 3]; 3],
+        area: u8,
     }
 
     impl Shape {
@@ -67,6 +89,7 @@ mod part_one {
             }
 
             let mut grid = [[false; 3]; 3];
+            let mut area = 0;
 
             for line_index in 0..3 {
                 let mut data_string = data_lines[line_index].chars();
@@ -77,7 +100,10 @@ mod part_one {
                     };
 
                     match c {
-                        '#' => grid[line_index][i] = true,
+                        '#' => {
+                            grid[line_index][i] = true;
+                            area += 1;
+                        }
                         '.' => {} // False is default so nothing needs to be done.
                         _ => {
                             return Err(format!(
@@ -90,7 +116,7 @@ mod part_one {
                 }
             }
 
-            Ok(Shape { grid })
+            Ok(Shape { grid, area })
         }
     }
 
@@ -140,6 +166,33 @@ mod part_one {
                 required_shapes,
             })
         }
+
+        fn is_possible(&self, shapes: &[Shape]) -> bool {
+            let area = self.gridsize.0 * self.gridsize.1;
+            let mut total_compressed_area_requirement: u64 = 0;
+            for i in 0..SHAPECOUNT {
+                total_compressed_area_requirement +=
+                    self.required_shapes[i] as u64 * shapes[i].area as u64;
+            }
+
+            let mut non_compressed_area_requirement: u64 = 0;
+            for i in 0..SHAPECOUNT {
+                non_compressed_area_requirement += self.required_shapes[i] as u64 * 9;
+            }
+
+            if non_compressed_area_requirement <= area as u64 {
+                return true;
+            }
+            if total_compressed_area_requirement < area as u64 {
+                println!(
+                    "Region area: {}\nCompressed Shapes area: {}\nNon-compressed Shapes area: {}",
+                    area, total_compressed_area_requirement, non_compressed_area_requirement
+                );
+
+                return false;
+            }
+            false
+        }
     }
 
     fn take_three_lines(
@@ -171,14 +224,15 @@ mod part_one {
             regions.push(Region::parse(&line)?);
         }
 
-        for s in shapes {
-            s.print();
-        }
+        let mut result = 0;
         for r in regions {
-            r.print();
+            if r.is_possible(&shapes) {
+                result += 1;
+                //r.print();
+            }
         }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+        Ok(result)
     }
 
     //
