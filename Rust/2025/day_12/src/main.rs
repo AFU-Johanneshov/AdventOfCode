@@ -1,13 +1,12 @@
-//#[cfg(debug_assertions)]
 mod reader;
 
 #[cfg(test)]
 mod tests;
 
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 2;
+pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 0;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 479;
 
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
@@ -65,6 +64,15 @@ Never assume that the data follows the same rules as the example data.
 
 Spent so much time trying to figure out wtf it is one should do here since supposedly the
 solutions should be possible to made rather simple.
+
+Edit 2:
+So since the puzzle is actually really simple the data structures I made are overkill, so quite a
+lot can be done to reduce code amount.
+To be honest we don't really need neither Shape or Region. Since shapes doesn't matter at all.
+Its even more simple than that actually.
+We can just skip the shapes entirely, and then just calculate the area of the region, then sum
+all the shape counts * 9 together. If the answer is less or equal to the area is it a valid
+region.
 */
 mod part_one {
     use crate::reader;
@@ -75,7 +83,6 @@ mod part_one {
     #[derive(Clone, Copy, Default, Debug)]
     pub struct Shape {
         grid: [[bool; 3]; 3],
-        area: u8,
     }
 
     impl Shape {
@@ -89,7 +96,6 @@ mod part_one {
             }
 
             let mut grid = [[false; 3]; 3];
-            let mut area = 0;
 
             for line_index in 0..3 {
                 let mut data_string = data_lines[line_index].chars();
@@ -100,10 +106,7 @@ mod part_one {
                     };
 
                     match c {
-                        '#' => {
-                            grid[line_index][i] = true;
-                            area += 1;
-                        }
+                        '#' => grid[line_index][i] = true,
                         '.' => {} // False is default so nothing needs to be done.
                         _ => {
                             return Err(format!(
@@ -116,7 +119,7 @@ mod part_one {
                 }
             }
 
-            Ok(Shape { grid, area })
+            Ok(Shape { grid })
         }
     }
 
@@ -167,31 +170,12 @@ mod part_one {
             })
         }
 
-        fn is_possible(&self, shapes: &[Shape]) -> bool {
-            let area = self.gridsize.0 * self.gridsize.1;
-            let mut total_compressed_area_requirement: u64 = 0;
-            for i in 0..SHAPECOUNT {
-                total_compressed_area_requirement +=
-                    self.required_shapes[i] as u64 * shapes[i].area as u64;
-            }
-
-            let mut non_compressed_area_requirement: u64 = 0;
-            for i in 0..SHAPECOUNT {
-                non_compressed_area_requirement += self.required_shapes[i] as u64 * 9;
-            }
-
-            if non_compressed_area_requirement <= area as u64 {
-                return true;
-            }
-            if total_compressed_area_requirement < area as u64 {
-                println!(
-                    "Region area: {}\nCompressed Shapes area: {}\nNon-compressed Shapes area: {}",
-                    area, total_compressed_area_requirement, non_compressed_area_requirement
-                );
-
-                return false;
-            }
-            false
+        fn is_possible(&self) -> bool {
+            self.required_shapes
+                .iter()
+                .map(|i| *i as usize * 9)
+                .sum::<usize>()
+                <= self.gridsize.0 * self.gridsize.1
         }
     }
 
@@ -226,9 +210,8 @@ mod part_one {
 
         let mut result = 0;
         for r in regions {
-            if r.is_possible(&shapes) {
+            if r.is_possible() {
                 result += 1;
-                //r.print();
             }
         }
 
