@@ -57,8 +57,40 @@ mod part_one {
     }
 
     impl Shape {
-        fn parse(_data_lines: &[Option<String>]) -> Result<Shape, Box<dyn Error>> {
-            todo!();
+        fn parse(data_lines: &[String]) -> Result<Shape, Box<dyn Error>> {
+            if data_lines.len() != 3 {
+                return Err(format!(
+                    "E1: Shape::parse(): incorrect data_lines length! Expected 3 but received {})",
+                    data_lines.len()
+                )
+                .into());
+            }
+
+            let mut grid = [[false; 3]; 3];
+
+            for line_index in 0..3 {
+                let mut data_string = data_lines[line_index].chars();
+                for i in 0..3 {
+                    let Some(c) = data_string.next() else {
+                        return Err(format!("E2: Shape::parse(): data_line {} has too few characters! Expected 3 but received [{}])"
+                                , line_index, data_lines[line_index]).into());
+                    };
+
+                    match c {
+                        '#' => grid[line_index][i] = true,
+                        '.' => {} // False is default so nothing needs to be done.
+                        _ => {
+                            return Err(format!(
+                            "E3: Shape::parse(): Received an invalid character [{}] in line [{}]",
+                            c, data_lines[line_index]
+                        )
+                            .into())
+                        }
+                    }
+                }
+            }
+
+            Ok(Shape { grid })
         }
     }
 
@@ -68,29 +100,82 @@ mod part_one {
     }
 
     impl Region {
-        fn parse(_data_string: &str) -> Result<Region, Box<dyn Error>> {
-            todo!();
+        fn parse(data_string: &str) -> Result<Region, Box<dyn Error>> {
+            let mut data_strings = data_string.split(": ");
+            let (Some(grid_size), Some(shape_requirements)) =
+                (data_strings.next(), data_strings.next())
+            else {
+                return Err(format!(
+                    "E4: Region::parse(): Data string [{}] has a incorrect format!",
+                    data_string
+                )
+                .into());
+            };
+
+            let mut grid_axis = grid_size.split("x");
+            let (Some(x), Some(y)) = (grid_axis.next(), grid_axis.next()) else {
+                return Err(format!(
+                    "E5: Region::parse(): Data string [{}] has a incorrect format!",
+                    data_string
+                )
+                .into());
+            };
+
+            let mut shapes = shape_requirements.split(" ");
+            let mut required_shapes = [0; SHAPECOUNT];
+            for i in 0..SHAPECOUNT {
+                let Some(s) = shapes.next() else {
+                    return Err(format!(
+                        "E5: Region::parse(): Data string [{}] has a incorrect format!",
+                        data_string
+                    )
+                    .into());
+                };
+
+                required_shapes[i] = s.parse()?;
+            }
+
+            Ok(Region {
+                gridsize: (x.parse()?, y.parse()?),
+                required_shapes,
+            })
         }
+    }
+
+    fn take_three_lines(
+        lines: &mut impl Iterator<Item = String>,
+    ) -> Result<Vec<String>, Box<dyn Error>> {
+        let mut result = Vec::new();
+        for i in 0..3 {
+            let Some(s) = lines.next() else {
+                return Err(format!("E5: take_three_lines(): Not enough remaining lines in iterator! Managed to take {} but expected 3!", i).into());
+            };
+            result.push(s);
+        }
+
+        Ok(result)
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let mut lines = reader::get_lines(data_path)?;
 
         let mut shapes = [Shape::default(); SHAPECOUNT];
-        for shape_index in 0..SHAPECOUNT {
+        for shape in shapes.iter_mut().take(SHAPECOUNT) {
             lines.next(); // Skip shape index line.
-            shapes[shape_index] = Shape::parse(&[lines.next(), lines.next(), lines.next()])?;
+            *shape = Shape::parse(&take_three_lines(&mut lines)?)?;
             lines.next(); // Skip empty separator line.
-        }
-
-        for s in shapes {
-            s.print();
-            //Shape::temp();
         }
 
         let mut regions: Vec<Region> = Vec::new();
         for line in lines {
             regions.push(Region::parse(&line)?);
+        }
+
+        for s in shapes {
+            s.print();
+        }
+        for r in regions {
+            r.print();
         }
 
         Err("NotImplemented: This problem has not been solved yet!".into())
@@ -118,6 +203,20 @@ mod part_one {
                     grid.push('\n');
                 }
                 println!("{}", grid);
+            }
+        }
+
+        use super::Region;
+
+        #[deprecated(note = "Debug-only method; guard with #[cfg(debug_assertions)]")]
+        impl Region {
+            pub fn print(&self) {
+                let mut result = String::new();
+                result.push_str(&format!("{}x{}:", self.gridsize.0, self.gridsize.1));
+                for value in self.required_shapes {
+                    result.push_str(&format!(" {}", value));
+                }
+                println!("{}", result);
             }
         }
     }
