@@ -1,5 +1,3 @@
-use std::error::Error;
-
 mod reader;
 
 #[cfg(test)]
@@ -13,7 +11,7 @@ pub const PART_ONE_EXPECTED_VALUE: u64 = 1029;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 6;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 5892;
 
 //
 
@@ -73,16 +71,17 @@ get it working was to:
        in a value higher than 98.
 2: Edit the loop going through each line to always add the result of dial.turn() to the count variable.
 
+Update: The above is no longer used. A alternate solution was created.
+
 */
 mod part_two {
     use crate::reader;
     use std::error::Error;
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let (mut result, mut dial_value) = (0, 50i32);
-        let mut section = (1, 0);
+        let (mut result, mut dial_value) = (0, 50);
+        let mut at_zero = false;
         for line in reader::get_lines(data_path)? {
-            println!("dial: {} rotate by: {}", dial_value, line,);
             let v = &line[1..].parse::<u64>()?;
             result += v / 100;
             match line.chars().next().ok_or("Unexpected empty line!")? {
@@ -90,167 +89,22 @@ mod part_two {
                 'L' => dial_value -= *v as i32 % 100,
                 _ => return Err("Invalid direction char!".into()),
             }
-            let cv = dial_value / 100;
-            if dial_value % 100 == 0 {
+
+            if (dial_value > 99 || dial_value < 1) && !at_zero {
                 result += 1;
-                section = (dial_value / 100, (dial_value / 100) - 1);
-            } else if i32::min((section.0 - cv).abs(), (section.1 - cv).abs()) != 0 {
-                result += 1;
-            } else {
-                section = (dial_value / 100, dial_value / 100);
             }
 
-            //result += (last_val - cv).unsigned_abs() as u64;
-            //last_val = cv;
-            println!("result: {}", result);
+            if dial_value < 0 {
+                dial_value += 100;
+            }
+
+            dial_value %= 100;
+
+            at_zero = dial_value == 0;
         }
         Ok(result)
     }
 }
-
-/*
-fn load_data(path: &str) -> Result<(), Box<dyn Error>> {
-    let lines = reader::get_lines(path)?;
-
-    todo!();
-} // */
-
-fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-    let lines = reader::get_lines(data_path)?;
-    let mut dial = Dial::new();
-    let mut count = 0;
-    for line in lines {
-        let rotation = Rotation::parse(&line)?;
-        count += dial.turn(rotation);
-    }
-
-    todo!();
-
-    Ok(count)
-}
-
-#[derive(Debug)]
-struct Rotation {
-    steps: i16,
-}
-
-impl Rotation {
-    fn parse(instruction: &str) -> Result<Rotation, Box<dyn Error>> {
-        let direction = match &instruction[0..1] {
-            "L" => -1,
-            "R" => 1,
-            _ => {
-                return Err(
-                    format!("Failed to parse direction of rotation: {}", instruction).into(),
-                )
-            }
-        };
-
-        let steps = match instruction[1..].parse::<i16>() {
-            Ok(steps) => steps,
-            Err(e) => {
-                return Err(format!(
-                    "Failed to parse steps of rotation: {}\nError: {}",
-                    instruction, e
-                )
-                .into())
-            }
-        };
-
-        Ok(Rotation {
-            steps: steps * direction,
-        })
-    }
-}
-
-#[derive(Debug)]
-struct Dial {
-    position: i16,
-}
-
-impl Dial {
-    fn new() -> Dial {
-        Dial { position: 50 }
-    }
-
-    fn turn(&mut self, rotation: Rotation) -> u64 {
-        let mut passes = (rotation.steps.abs() / 100) as u64;
-
-        // It wasn't clear at first glance that the rotations could be more than 99 steps, but as
-        // the data file does contain such values we use this to basically cut away the excess full
-        // rotations and only keep the part that matters.
-        let steps = rotation.steps % 100;
-
-        self.position += steps;
-
-        // The issue now is that it counts as a pass when it starts at 0
-        if self.position > 99 {
-            self.position -= 100;
-            passes += 1;
-        } else if self.position < 0 {
-            self.position += 100;
-            passes += 1;
-        }
-
-        /*
-        match rotation.direction {
-            Dir::Left => {
-                if self.position != 0 && self.position <= steps {
-                    passes += 1;
-                }
-                if self.position < steps {
-                    self.position = self.position + 100 - steps;
-                } else {
-                    self.position -= steps;
-                }
-            }
-            Dir::Right => {
-                self.position += steps;
-                if self.position > 99 {
-                    self.position -= 100;
-                    passes += 1;
-                }
-            }
-        } */
-
-        // Debug output
-        if passes != 0 {
-            println!(
-                "{:?} caused the dial to point at [0] {} times and stopped at the position: {}",
-                rotation, passes, self.position
-            );
-        } // */
-        passes
-    }
-}
-
-/*
-#[test]
-fn calculate_test() {
-    let expected_value = 6;
-    match calculate("testdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Program using testdata.txt finished but result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Error occured:\n{}", err),
-    }
-}*/
-
-/*
-#[test]
-fn calculate_small_test() {
-    let expected_value = 0;
-    match calculate("smalltestdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Program using smalltestdata.txt finished but result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Error occured:\n{}", err),
-    }
-} // */
 
 //
 
