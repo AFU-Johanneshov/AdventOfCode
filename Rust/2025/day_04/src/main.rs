@@ -1,11 +1,25 @@
-use std::error::Error;
-
-mod data_parser;
-mod operations;
 mod reader;
 
+#[cfg(test)]
+mod tests;
+
+#[allow(dead_code)]
+pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 13;
+#[allow(dead_code)]
+pub const PART_ONE_EXPECTED_VALUE: u64 = 1445;
+
+#[allow(dead_code)]
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 43;
+#[allow(dead_code)]
+pub const PART_TWO_EXPECTED_VALUE: u64 = 8317;
+
+//
+
+//
+
 /*
-Part One:
+Part One
+##################################################################################################
 
 This time we have a grid of either empty or paper tiles.
 We need to figure out which paper tiles have at most 4 other occupied tiles in the surrounding 8 tiles.
@@ -24,10 +38,109 @@ Once all tiles have been visited then return the count value.
 Improvement:
 If we give the two dimensional array 1 layer of empty tils all around the data tiles then we won't need to
 check that the tile being checked is within the array.
+*/
+mod part_one {
+    use crate::reader;
+    use std::error::Error;
 
+    #[derive(Clone, Copy)]
+    enum Tile {
+        Empty,
+        Occupied,
+    }
 
+    impl Tile {
+        fn parse(char: char) -> Result<Tile, Box<dyn Error>> {
+            match char {
+                '.' => Ok(Tile::Empty),
+                '@' => Ok(Tile::Occupied),
+                _ => Err(format!("Tile parse error! Invalid character [{char}]!").into()),
+            }
+        }
+    }
 
-Part Two:
+    const MAPSIZE: usize = 136 + 2; // 136 is the size of the largest data file.
+                                    // Add 2 for a extra layer of empty tiles around the edges.
+
+    struct Map {
+        grid: [[Tile; MAPSIZE]; MAPSIZE],
+        size_override: usize,
+    }
+
+    impl Map {
+        fn load_from_file(path: &str) -> Result<Map, Box<dyn Error>> {
+            let lines = reader::get_lines(path)?;
+            let mut grid = [[Tile::Empty; MAPSIZE]; MAPSIZE];
+            let mut size_override = 0;
+            for (y, line) in lines.enumerate() {
+                for (x, char) in line.chars().enumerate() {
+                    grid[x + 1][y + 1] = Tile::parse(char)?;
+                }
+                size_override = y + 1;
+            }
+
+            Ok(Map {
+                grid,
+                size_override,
+            })
+        }
+
+        fn accessable_tiles(&self) -> u64 {
+            let mut accessable_tiles = 0;
+            for y in 1..self.size_override + 1 {
+                for x in 1..self.size_override + 1 {
+                    if let Tile::Empty = self.grid[x][y] {
+                        continue;
+                    }
+
+                    if self.is_accessable(x, y) {
+                        accessable_tiles += 1;
+                    }
+                }
+            }
+            accessable_tiles
+        }
+
+        fn is_accessable(&self, c_x: usize, c_y: usize) -> bool {
+            let mut occupied = 0;
+            for y in c_y - 1..=c_y + 1 {
+                for x in c_x - 1..=c_x + 1 {
+                    if let Tile::Occupied = self.grid[x][y] {
+                        occupied += 1;
+                    }
+                }
+            }
+            occupied <= 4
+        }
+
+        /// Debug code to print the map in the same format as the data file.
+        #[allow(dead_code)]
+        fn print(&self) {
+            for y in 1..self.size_override + 1 {
+                for x in 1..self.size_override + 1 {
+                    match self.grid[x][y] {
+                        Tile::Empty => print!("."),
+                        Tile::Occupied => print!("@"),
+                    }
+                }
+                println!();
+            }
+        }
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let map = Map::load_from_file(data_path)?;
+        Ok(map.accessable_tiles())
+    }
+}
+
+//
+
+//
+
+/*
+Part Two
+##################################################################################################
 
 We now have permission to remove paper tiles if they are accessible. Meaning occupied tiles that wasn't
 accessible could be accessible after another is removed.
@@ -39,127 +152,128 @@ Then we would simply call collect_paper over and over again untill the return va
 It is not the most "efficient" solution, but it would be very easy to modify the existing code to work.
 A more efficient solution would require a larger redesign of the system. Not impossible but it would
 still demand quite a lot more work.
-
-
-
 */
+mod part_two {
+    use crate::reader;
+    use std::error::Error;
 
-#[derive(Clone, Copy)]
-enum Tile {
-    Empty,
-    Paper,
-}
-
-impl Tile {
-    fn parse(char: char) -> Result<Tile, Box<dyn Error>> {
-        match char {
-            '.' => Ok(Tile::Empty),
-            '@' => Ok(Tile::Paper),
-            _ => Err(format!("Tile parse error! Invalid character [{char}]!").into()),
-        }
+    #[derive(Clone, Copy)]
+    enum Tile {
+        Empty,
+        Paper,
     }
-}
 
-const MAPSIZE: usize = 136 + 2; // 136 is the size of the largest data file.
-                                // Add 2 for a extra layer of empty tiles around the edges.
-
-struct Map {
-    grid: [[Tile; MAPSIZE]; MAPSIZE],
-    size_override: usize,
-}
-
-impl Map {
-    fn load_from_file(path: &str) -> Result<Map, Box<dyn Error>> {
-        let lines = reader::get_lines(path)?;
-        let mut grid = [[Tile::Empty; MAPSIZE]; MAPSIZE];
-        let mut size_override = 0;
-        for (y, line) in lines.enumerate() {
-            for (x, char) in line.chars().enumerate() {
-                grid[x + 1][y + 1] = Tile::parse(char)?; // +1 to give space around the edges.
+    impl Tile {
+        fn parse(char: char) -> Result<Tile, Box<dyn Error>> {
+            match char {
+                '.' => Ok(Tile::Empty),
+                '@' => Ok(Tile::Paper),
+                _ => Err(format!("Tile parse error! Invalid character [{char}]!").into()),
             }
-            size_override = y + 1;
         }
-
-        Ok(Map {
-            grid,
-            size_override,
-        })
     }
 
-    fn collect_paper(&mut self) -> u64 {
+    const MAPSIZE: usize = 136 + 2; // 136 is the size of the largest data file.
+                                    // Add 2 for a extra layer of empty tiles around the edges.
+
+    struct Map {
+        grid: [[Tile; MAPSIZE]; MAPSIZE],
+        size_override: usize,
+    }
+
+    impl Map {
+        fn load_from_file(path: &str) -> Result<Map, Box<dyn Error>> {
+            let lines = reader::get_lines(path)?;
+            let mut grid = [[Tile::Empty; MAPSIZE]; MAPSIZE];
+            let mut size_override = 0;
+            for (y, line) in lines.enumerate() {
+                for (x, char) in line.chars().enumerate() {
+                    grid[x + 1][y + 1] = Tile::parse(char)?; // +1 to give space around the edges.
+                }
+                size_override = y + 1;
+            }
+
+            Ok(Map {
+                grid,
+                size_override,
+            })
+        }
+
+        fn collect_paper(&mut self) -> u64 {
+            let mut paper_collected = 0;
+            for y in 1..self.size_override + 1 {
+                for x in 1..self.size_override + 1 {
+                    if let Tile::Empty = self.grid[x][y] {
+                        continue;
+                    }
+
+                    if self.is_accessible(x, y) {
+                        paper_collected += 1;
+                        self.grid[x][y] = Tile::Empty;
+                    }
+                }
+            }
+            paper_collected
+        }
+
+        fn is_accessible(&mut self, c_x: usize, c_y: usize) -> bool {
+            let mut surrounding_paper = 0;
+            for y in c_y - 1..=c_y + 1 {
+                for x in c_x - 1..=c_x + 1 {
+                    if let Tile::Paper = self.grid[x][y] {
+                        surrounding_paper += 1;
+                    }
+                }
+            }
+            surrounding_paper <= 4
+        }
+
+        /// Debug code to print the map in the same format as the data file.
+        #[allow(dead_code)]
+        fn print(&self) {
+            for y in 1..self.size_override + 1 {
+                for x in 1..self.size_override + 1 {
+                    match self.grid[x][y] {
+                        Tile::Empty => print!(".."),
+                        Tile::Paper => print!("@@"),
+                    }
+                }
+                println!();
+            }
+        }
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut map = Map::load_from_file(data_path)?;
         let mut paper_collected = 0;
-        for y in 1..self.size_override + 1 {
-            for x in 1..self.size_override + 1 {
-                if let Tile::Empty = self.grid[x][y] {
-                    continue;
-                }
-
-                if self.is_accessible(x, y) {
-                    paper_collected += 1;
-                    self.grid[x][y] = Tile::Empty;
-                }
+        loop {
+            let paper = map.collect_paper();
+            if paper == 0 {
+                break;
             }
+            paper_collected += paper;
         }
-        paper_collected
-    }
 
-    fn is_accessible(&mut self, c_x: usize, c_y: usize) -> bool {
-        let mut surrounding_paper = 0;
-        for y in c_y - 1..=c_y + 1 {
-            for x in c_x - 1..=c_x + 1 {
-                if let Tile::Paper = self.grid[x][y] {
-                    surrounding_paper += 1;
-                }
-            }
-        }
-        surrounding_paper <= 4
-    }
-
-    /// Debug code to print the map in the same format as the data file.
-    #[allow(dead_code)]
-    fn print(&self) {
-        for y in 1..self.size_override + 1 {
-            for x in 1..self.size_override + 1 {
-                match self.grid[x][y] {
-                    Tile::Empty => print!(".."),
-                    Tile::Paper => print!("@@"),
-                }
-            }
-            println!();
-        }
+        Ok(paper_collected)
     }
 }
 
-fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-    let mut map = Map::load_from_file(data_path)?;
-    let mut paper_collected = 0;
-    loop {
-        let paper = map.collect_paper();
-        if paper == 0 {
-            break;
-        }
-        paper_collected += paper;
-    }
+//
 
-    Ok(paper_collected)
-}
+//
+
+// Default controller code. Is the same between projects.
+// ###############################################################################################
 
 fn main() {
-    match calculate("data.txt") {
+    print!("Running Program...\n\nPart One ");
+    match part_one::calculate("data.txt") {
         Ok(value) => println!("Result:\n{}", value),
-        Err(err) => println!("Error occured:\n{}", err),
+        Err(err) => println!("FAILED with error:\n{}", err),
     }
-}
-
-#[test]
-fn calculate_test() {
-    let expected_value = 43;
-    match calculate("testdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Program using testdata.txt finished but result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Error occured:\n{}", err),
+    print!("\nPart Two ");
+    match part_two::calculate("data.txt") {
+        Ok(value) => println!("Result:\n{}\n", value),
+        Err(err) => println!("FAILED with error:\n{}\n", err),
     }
 }
