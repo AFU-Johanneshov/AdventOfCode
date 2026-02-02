@@ -59,29 +59,29 @@ mod part_one {
         }
 
         fn joltage(&self) -> u8 {
-            let (mut highest, mut second_highest) = (0, 0);
-            for i in 0..self.batteries.len() - 1 {
-                let battery = self.batteries[i];
-                if battery > highest {
-                    highest = battery;
-                    second_highest = 0;
+            let (mut highest_level, mut second_highest_level) = (0, 0);
+            for battery_index in 0..self.batteries.len() - 1 {
+                let battery_level = self.batteries[battery_index];
+                if battery_level > highest_level {
+                    highest_level = battery_level;
+                    second_highest_level = 0;
                 }
-                let next_battery = self.batteries[i + 1];
-                if next_battery > second_highest {
-                    second_highest = next_battery;
+                let next_battery_level = self.batteries[battery_index + 1];
+                if next_battery_level > second_highest_level {
+                    second_highest_level = next_battery_level;
                 }
             }
-            (highest * 10) + second_highest
+            (highest_level * 10) + second_highest_level
         }
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let mut count: u64 = 0;
+        let mut output_joltage: u64 = 0;
         for line in reader::get_lines(data_path)? {
-            count += BatteryBank::parse(&line)?.joltage() as u64;
+            output_joltage += BatteryBank::parse(&line)?.joltage() as u64;
         }
 
-        Ok(count)
+        Ok(output_joltage)
     }
 }
 
@@ -161,23 +161,23 @@ mod part_two {
             Self::assemble_digits(&selected_digits)
         }
 
-        fn assemble_digits(digits: &Vec<u8>) -> u64 {
-            let (mut result, mut multiplier) = (0, 100000000000);
-            for value in digits {
-                result += (*value as u64) * multiplier;
-                multiplier /= 10;
+        fn assemble_digits(digits: &[u8]) -> u64 {
+            let (mut result, mut multiplier) = (0, 1);
+            for value in digits.iter().rev() {
+                result += *value as u64 * multiplier;
+                multiplier *= 10;
             }
             result
         }
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let mut count: u64 = 0;
+        let mut output_joltage: u64 = 0;
         for line in reader::get_lines(data_path)? {
-            count += BatteryBank::parse(&line)?.joltage();
+            output_joltage += BatteryBank::parse(&line)?.joltage();
         }
 
-        Ok(count)
+        Ok(output_joltage)
     }
 }
 
