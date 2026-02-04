@@ -19,7 +19,7 @@ fn calculate_part_one_example() {
         return;
     };
 
-    match part_one::calculate("testdata.txt", 3) {
+    match part_one::calculate("testdata.txt") {
             Ok(value) => assert_eq!(
                 value, expected_value,
                 "Part One calculation completed successfully but the result was wrong! Expected: {} but received: {}",
@@ -34,7 +34,7 @@ fn calculate_part_one_full() {
     let Some(expected_value) = test_configured(PART_ONE_EXPECTED_VALUE) else {
         return;
     };
-    match part_one::calculate("data.txt", 4) {
+    match part_one::calculate("data.txt") {
             Ok(value) => assert_eq!(
                 value, expected_value,
                 "Part One calculation completed successfully but the result was wrong! Expected: {} but received: {}",

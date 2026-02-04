@@ -36,81 +36,63 @@ mod part_one {
     use std::error::Error;
 
     enum Operator {
-        Add(u64),
-        Mul(u64),
+        Add,
+        Mul,
     }
 
     impl Operator {
         fn parse(data_string: &str) -> Result<Operator, Box<dyn Error>> {
             match data_string {
-                "+" => Ok(Operator::Add(0)),
-                "*" => Ok(Operator::Mul(1)), // 1 since the first combine would otherwise multiply by 0
+                "+" => Ok(Operator::Add),
+                "*" => Ok(Operator::Mul),
                 _ => Err(format!("Could not parse operator from: [{}]", data_string).into()),
             }
         }
 
-        fn combine(&mut self, other_value: &u16) {
+        fn use_on(&self, a: &u64, b: &u64) -> u64 {
             match self {
-                Self::Add(value) => *value += *other_value as u64,
-                Self::Mul(value) => *value *= *other_value as u64,
+                Self::Add => *a + *b,
+                Self::Mul => *a * *b,
             }
         }
 
-        fn value(&self) -> u64 {
-            match self {
-                Self::Add(value) => *value,
-                Self::Mul(value) => *value,
-            }
+        fn is_mul(&self) -> bool {
+            matches!(self, Self::Mul)
         }
     }
 
-    pub fn calculate(path: &str, value_lines_override: usize) -> Result<u64, Box<dyn Error>> {
-        let mut lines = reader::get_lines(path)?;
+    fn is_not_empty(str: &&str) -> bool {
+        !str.is_empty()
+    }
 
-        let mut value_lines: [Vec<u16>; 4] = [const { Vec::new() }; 4];
-        for i in 0..value_lines_override {
-            for value_string in lines
-                .next()
-                .ok_or(
-                    "Datafile value lines does not match the provided value_lines_override value.",
-                )?
-                .split(" ")
-                .filter(|s| !s.is_empty())
-            {
-                value_lines[i].push(value_string.parse()?);
+    pub fn calculate(path: &str) -> Result<u64, Box<dyn Error>> {
+        let lines: Vec<String> = reader::get_lines(path)?.collect();
+
+        let mut value_lines: Vec<Vec<u64>> = Vec::new();
+        for line in lines.iter().take(lines.len() - 1) {
+            let mut values = Vec::new();
+            for value_str in line.split(' ').filter(is_not_empty) {
+                values.push(value_str.parse()?);
             }
+            value_lines.push(values);
         }
 
         let mut operators: Vec<Operator> = Vec::new();
-        for operator_string in lines
-            .next()
-            .ok_or("There should always be a operators line after the values.")?
-            .split(" ")
-            .filter(|s| !s.is_empty())
-        {
-            operators.push(Operator::parse(operator_string)?);
+        for operator_str in lines[lines.len() - 1].split(' ').filter(is_not_empty) {
+            operators.push(Operator::parse(operator_str)?);
         }
 
-        for i in 0..value_lines_override {
-            if value_lines[i].len() != operators.len() {
-                return Err(
-                    "Data file contains lines with different amount of columns! Aborting...".into(),
-                );
-            }
+        if value_lines.iter().any(|line| line.len() != operators.len()) {
+            return Err("Data file contains lines with different amount of columns!".into());
         }
 
-        println!("Len: {}", operators.len());
-
-        let mut sum: u64 = 0;
-        for (i, operator) in operators.iter_mut().enumerate() {
-            for y in 0..value_lines_override {
-                let other_value = &value_lines[y][i];
-                print!(" {other_value} ");
-                operator.combine(other_value);
+        let mut sum = 0;
+        for (i, operator) in operators.iter().enumerate() {
+            let mut line_sum = if operator.is_mul() { 1 } else { 0 };
+            for value in value_lines.iter().map(|line| line[i]) {
+                line_sum = operator.use_on(&line_sum, &value);
             }
-            let value = operator.value();
-            println!("Value: {value}");
-            sum += operator.value();
+            sum += line_sum;
         }
 
         Ok(sum)
@@ -124,8 +106,6 @@ mod part_one {
 /*
 Part Two
 ##################################################################################################
-
-Part Two:
 
 This is pure evil.
 Now we need to read the values one column at a time.
@@ -228,7 +208,7 @@ mod part_two {
 
 fn main() {
     print!("Running Program...\n\nPart One ");
-    match part_one::calculate("data.txt", 4) {
+    match part_one::calculate("data.txt") {
         Ok(value) => println!("Result:\n{}", value),
         Err(err) => println!("FAILED with error:\n{}", err),
     }
