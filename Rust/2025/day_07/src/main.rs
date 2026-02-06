@@ -1,11 +1,27 @@
-use std::{collections::VecDeque, error::Error};
-
-mod data_parser;
-mod operations;
+#[macro_use]
+mod macros;
 mod reader;
 
+#[cfg(test)]
+mod tests;
+
+#[allow(dead_code)]
+pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 0;
+#[allow(dead_code)]
+pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+
+#[allow(dead_code)]
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+#[allow(dead_code)]
+pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+
+//
+
+//
+
 /*
-Part One:
+Part One
+##################################################################################################
 
 We have a grid of empty spaces '.' and splitters '^'. The goal is to figure out how many
 times a splitter is hit.
@@ -37,10 +53,48 @@ return split count
 
 No need to check that the split beam is inside the grid as the closest a splitter is to
 the edge is at least one empty tile.
+*/
+mod part_one {
+    use crate::reader;
+    use std::error::Error;
 
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut grid: Vec<Vec<char>> = reader::get_lines(data_path)?
+            .map(|line| line.chars().collect())
+            .collect();
 
+        let (grid_width, mut splits) = (grid[0].len(), 0);
+        if grid.iter().any(|line| line.len() != grid_width) {
+            return Err("The data lines does not have the same lenth!".into());
+        }
 
-Part Two:
+        for y in 0..grid.len() - 1 {
+            for x in 0..grid_width {
+                if grid[y][x] == '|' || grid[y][x] == 'S' {
+                    match grid[y + 1][x] {
+                        '.' | '|' => grid[y + 1][x] = '|',
+                        '^' => {
+                            grid[y + 1][x - 1] = '|';
+                            grid[y + 1][x + 1] = '|';
+                            splits += 1;
+                        }
+                        _ => return Err("Invalid character in grid!".into()),
+                    }
+                }
+            }
+        }
+
+        Ok(splits)
+    }
+}
+
+//
+
+//
+
+/*
+Part Two
+##################################################################################################
 
 New we need to figure out how many different paths one beam can take. At first I was
 thinking this might be possible to solve with math alone, but I am too tired to figure
@@ -118,155 +172,104 @@ and return the result
 Rust allows the use of Enums with values, so I use that instead of the hashmap
 approach, but the logic behind it is the same. Just instead of storing the
 strength in the hashmap I store it in the Beam type of tiles.
-
-
-
 */
+mod part_two {
+    use crate::reader;
+    use std::error::Error;
 
-fn calculate_part_one(data_path: &str) -> Result<u64, Box<dyn Error>> {
-    let mut grid: Vec<Vec<char>> = reader::get_lines(data_path)?
-        .map(|line| line.chars().collect())
-        .collect();
-
-    let (grid_width, mut splits) = (grid[0].len(), 0);
-    if grid.iter().any(|line| line.len() != grid_width) {
-        return Err("The data lines does not have the same lenth!".into());
+    #[derive(PartialEq, Eq, Clone, Copy, Debug)]
+    enum Tile {
+        Beam(u64),
+        Empty,
+        Splitter,
     }
 
-    for y in 0..grid.len() - 1 {
-        for x in 0..grid_width {
-            if grid[y][x] == '|' || grid[y][x] == 'S' {
-                match grid[y + 1][x] {
-                    '.' | '|' => grid[y + 1][x] = '|',
-                    '^' => {
-                        grid[y + 1][x - 1] = '|';
-                        grid[y + 1][x + 1] = '|';
-                        splits += 1;
-                    }
-                    _ => return Err("Invalid character in grid!".into()),
-                }
+    impl Tile {
+        /// If the tile this is called on is of type Beam or Empty a Beam type will be returned with
+        /// the strength provided + any potential old strength of an existing beam.
+        /// If the tile is a Splitter then a splitter is returned.
+        fn add_beam_strenght(&self, strength: u64) -> Tile {
+            match self {
+                Tile::Empty => Tile::Beam(strength),
+                Tile::Beam(current_strength) => Tile::Beam(current_strength + strength),
+                Tile::Splitter => Tile::Splitter,
+            }
+        }
+
+        fn parse(c: &char) -> Result<Tile, Box<dyn Error>> {
+            match c {
+                'S' => Ok(Tile::Beam(1)),
+                '.' => Ok(Tile::Empty),
+                '^' => Ok(Tile::Splitter),
+                _ => Err("Invalid character in data file!".into()),
             }
         }
     }
 
-    Ok(splits)
-}
-
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-enum Tile {
-    Beam(u64),
-    Empty,
-    Splitter,
-}
-
-impl Tile {
-    /// If the tile this is called on is of type Beam or Empty a Beam type will be returned with
-    /// the strength provided + any potential old strength of an existing beam.
-    /// If the tile is a Splitter then a splitter is returned.
-    fn add_beam_strenght(&self, strength: u64) -> Tile {
-        match self {
-            Tile::Empty => Tile::Beam(strength),
-            Tile::Beam(current_strength) => Tile::Beam(current_strength + strength),
-            Tile::Splitter => Tile::Splitter,
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut grid: Vec<Vec<Tile>> = Vec::new();
+        for line in reader::get_lines(data_path)? {
+            let mut row = Vec::new();
+            for c in line.chars() {
+                row.push(Tile::parse(&c)?);
+            }
+            grid.push(row);
         }
-    }
 
-    fn parse(c: &char) -> Result<Tile, Box<dyn Error>> {
-        match c {
-            'S' => Ok(Tile::Beam(1)),
-            '.' => Ok(Tile::Empty),
-            '^' => Ok(Tile::Splitter),
-            _ => Err("Invalid character in data file!".into()),
+        if grid.iter().any(|line| line.len() != grid[0].len()) {
+            return Err("The data lines does not have the same lenth!".into());
         }
-    }
-}
 
-fn calculate_part_two(data_path: &str) -> Result<u64, Box<dyn Error>> {
-    let mut grid: Vec<Vec<Tile>> = Vec::new();
-    for line in reader::get_lines(data_path)? {
-        let mut row = Vec::new();
-        for c in line.chars() {
-            row.push(Tile::parse(&c)?);
-        }
-        grid.push(row);
-    }
-
-    if grid.iter().any(|line| line.len() != grid[0].len()) {
-        return Err("The data lines does not have the same lenth!".into());
-    }
-
-    for y in 0..grid.len() - 1 {
-        for x in 0..grid[0].len() {
-            if let Tile::Beam(strength) = grid[y][x] {
-                match grid[y + 1][x] {
-                    Tile::Beam(_) | Tile::Empty => {
-                        grid[y + 1][x] = grid[y + 1][x].add_beam_strenght(strength)
-                    }
-                    Tile::Splitter => {
-                        grid[y + 1][x - 1] = grid[y + 1][x - 1].add_beam_strenght(strength);
-                        grid[y + 1][x + 1] = grid[y + 1][x + 1].add_beam_strenght(strength);
+        for y in 0..grid.len() - 1 {
+            for x in 0..grid[0].len() {
+                if let Tile::Beam(strength) = grid[y][x] {
+                    match grid[y + 1][x] {
+                        Tile::Beam(_) | Tile::Empty => {
+                            grid[y + 1][x] = grid[y + 1][x].add_beam_strenght(strength)
+                        }
+                        Tile::Splitter => {
+                            grid[y + 1][x - 1] = grid[y + 1][x - 1].add_beam_strenght(strength);
+                            grid[y + 1][x + 1] = grid[y + 1][x + 1].add_beam_strenght(strength);
+                        }
                     }
                 }
             }
         }
-    }
 
-    let mut c = 0;
-    for tile in grid[grid.len() - 1].iter() {
-        if let Tile::Beam(strength) = tile {
-            c += strength;
+        let mut c = 0;
+        for tile in grid[grid.len() - 1].iter() {
+            if let Tile::Beam(strength) = tile {
+                c += strength;
+            }
         }
+        Ok(c)
     }
-    Ok(c)
 }
+
+//
+
+//
+
+// Default controller code. Is the same between projects.
+// ###############################################################################################
 
 fn main() {
-    match calculate_part_one("data.txt") {
-        Ok(value) => println!("Part One Result:\n{}", value),
-        Err(err) => println!("Error occured:\n{}", err),
-    }
-    match calculate_part_two("data.txt") {
-        Ok(value) => println!("Part Two Result:\n{}", value),
-        Err(err) => println!("Error occured:\n{}", err),
-    }
-}
+    println!("Running Program...");
 
-#[test]
-fn calculate_part_one_test() {
-    let expected_value = 21;
-    match calculate_part_one("testdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Program using testdata.txt finished but result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Error occured:\n{}", err),
+    if cfg!(feature = "bench") {
+        println!("Benchmarks are enabled!\n");
     }
-}
 
-#[test]
-fn calculate_part_two_test() {
-    let expected_value = 40;
-    match calculate_part_two("testdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Program using testdata.txt finished but result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Error occured:\n{}", err),
-    }
+    println!("\nPart One {}\n", {
+        match benchmark!("calculate", { part_one::calculate("data.txt") }) {
+            Ok(value) => format!("Result:\n{}", value),
+            Err(err) => format!("FAILED with error:\n{}", err),
+        }
+    });
+    println!("\nPart One {}\n", {
+        match benchmark!("calculate", { part_two::calculate("data.txt") }) {
+            Ok(value) => format!("Result:\n{}", value),
+            Err(err) => format!("FAILED with error:\n{}", err),
+        }
+    });
 }
-
-/*
-#[test]
-fn calculate_small_test() {
-    let expected_value = 0;
-    match calculate("smalltestdata.txt") {
-        Ok(value) => assert_eq!(
-            value, expected_value,
-            "Program using smalltestdata.txt finished but result was wrong! Expected: {} but received: {}",
-            expected_value, value
-        ),
-        Err(err) => panic!("Error occured:\n{}", err),
-    }
-} // */
