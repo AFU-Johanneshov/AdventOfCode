@@ -6,14 +6,14 @@ mod reader;
 mod tests;
 
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 21;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 1649;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 40;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 16937871060075;
 
 //
 
@@ -70,16 +70,18 @@ mod part_one {
 
         for y in 0..grid.len() - 1 {
             for x in 0..grid_width {
-                if grid[y][x] == '|' || grid[y][x] == 'S' {
-                    match grid[y + 1][x] {
-                        '.' | '|' => grid[y + 1][x] = '|',
-                        '^' => {
-                            grid[y + 1][x - 1] = '|';
-                            grid[y + 1][x + 1] = '|';
-                            splits += 1;
-                        }
-                        _ => return Err("Invalid character in grid!".into()),
+                if grid[y][x] != '|' && grid[y][x] != 'S' {
+                    continue;
+                }
+
+                match grid[y + 1][x] {
+                    '.' | '|' => grid[y + 1][x] = '|',
+                    '^' => {
+                        grid[y + 1][x - 1] = '|';
+                        grid[y + 1][x + 1] = '|';
+                        splits += 1;
                     }
+                    _ => return Err("Invalid character in grid!".into()),
                 }
             }
         }
@@ -188,11 +190,11 @@ mod part_two {
         /// If the tile this is called on is of type Beam or Empty a Beam type will be returned with
         /// the strength provided + any potential old strength of an existing beam.
         /// If the tile is a Splitter then a splitter is returned.
-        fn add_beam_strenght(&self, strength: u64) -> Tile {
+        fn add_beam_strenght(&mut self, strength: u64) {
             match self {
-                Tile::Empty => Tile::Beam(strength),
-                Tile::Beam(current_strength) => Tile::Beam(current_strength + strength),
-                Tile::Splitter => Tile::Splitter,
+                Tile::Empty => *self = Tile::Beam(strength),
+                Tile::Beam(current_strength) => *current_strength += strength,
+                Tile::Splitter => {}
             }
         }
 
@@ -209,11 +211,8 @@ mod part_two {
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let mut grid: Vec<Vec<Tile>> = Vec::new();
         for line in reader::get_lines(data_path)? {
-            let mut row = Vec::new();
-            for c in line.chars() {
-                row.push(Tile::parse(&c)?);
-            }
-            grid.push(row);
+            let row: Result<Vec<Tile>, _> = line.chars().map(|c| Tile::parse(&c)).collect();
+            grid.push(row?);
         }
 
         if grid.iter().any(|line| line.len() != grid[0].len()) {
@@ -222,27 +221,24 @@ mod part_two {
 
         for y in 0..grid.len() - 1 {
             for x in 0..grid[0].len() {
-                if let Tile::Beam(strength) = grid[y][x] {
-                    match grid[y + 1][x] {
-                        Tile::Beam(_) | Tile::Empty => {
-                            grid[y + 1][x] = grid[y + 1][x].add_beam_strenght(strength)
-                        }
-                        Tile::Splitter => {
-                            grid[y + 1][x - 1] = grid[y + 1][x - 1].add_beam_strenght(strength);
-                            grid[y + 1][x + 1] = grid[y + 1][x + 1].add_beam_strenght(strength);
-                        }
+                let Tile::Beam(strength) = grid[y][x] else {
+                    continue;
+                };
+
+                match grid[y + 1][x] {
+                    Tile::Beam(_) | Tile::Empty => grid[y + 1][x].add_beam_strenght(strength),
+                    Tile::Splitter => {
+                        grid[y + 1][x - 1].add_beam_strenght(strength);
+                        grid[y + 1][x + 1].add_beam_strenght(strength);
                     }
                 }
             }
         }
 
-        let mut c = 0;
-        for tile in grid[grid.len() - 1].iter() {
-            if let Tile::Beam(strength) = tile {
-                c += strength;
-            }
-        }
-        Ok(c)
+        Ok(grid[grid.len() - 1]
+            .iter()
+            .map(|t| if let Tile::Beam(s) = t { *s } else { 0 })
+            .sum::<u64>())
     }
 }
 
@@ -266,7 +262,7 @@ fn main() {
             Err(err) => format!("FAILED with error:\n{}", err),
         }
     });
-    println!("\nPart One {}\n", {
+    println!("\nPart Two {}\n", {
         match benchmark!("calculate", { part_two::calculate("data.txt") }) {
             Ok(value) => format!("Result:\n{}", value),
             Err(err) => format!("FAILED with error:\n{}", err),
