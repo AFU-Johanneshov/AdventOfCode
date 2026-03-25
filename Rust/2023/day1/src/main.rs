@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 142;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 55971;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 281;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -67,6 +67,12 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+The task here is basically the same as part one, except more "values" are now included.
+Ascii digits still count just as they do in part one, but now there are string representations of
+numbers too. Meaning 7 is 7, but "seven" is also seven.
+
+I think the best method here is to use the same code as part one, but add some further pattens to
+look out for.
 */
 mod part_two {
     use crate::reader;
