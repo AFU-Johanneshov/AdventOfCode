@@ -1,0 +1,9 @@
+[package]
+name = "AoC_Solution"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+[features]
+bench = []
