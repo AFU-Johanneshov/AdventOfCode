@@ -13,7 +13,7 @@ pub const PART_ONE_EXPECTED_VALUE: u64 = 55971;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 281;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 54719;
 
 //
 
@@ -78,10 +78,61 @@ mod part_two {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    fn patterns() -> Vec<(&'static str, u64)> {
+        vec![
+            ("one", 1),
+            ("two", 2),
+            ("three", 3),
+            ("four", 4),
+            ("five", 5),
+            ("six", 6),
+            ("seven", 7),
+            ("eight", 8),
+            ("nine", 9),
+            ("1", 1),
+            ("2", 2),
+            ("3", 3),
+            ("4", 4),
+            ("5", 5),
+            ("6", 6),
+            ("7", 7),
+            ("8", 8),
+            ("9", 9),
+        ]
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    fn get_values(data_str: &str) -> Vec<u64> {
+        let patterns = patterns();
+        let mut values = Vec::new();
+
+        for data_str_index in 0..data_str.len() {
+            let part = &data_str[data_str_index..];
+            for (pattern, value) in patterns.iter() {
+                if part.starts_with(pattern) {
+                    values.push(*value);
+                    break;
+                }
+            }
+        }
+
+        values
+    }
+
+    fn get_calibration_value(data_str: &str) -> Result<u64, Box<dyn Error>> {
+        let values = get_values(data_str);
+
+        if values.is_empty() {
+            Err(format!("No values found in data str: [{}]", data_str).into())
+        } else {
+            // values will always contain at least one element so this will never panic.
+            Ok((values.first().unwrap() * 10) + values.last().unwrap())
+        }
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        reader::get_lines(data_path)?
+            .map(|line| get_calibration_value(&line))
+            .sum::<Result<u64, _>>()
     }
 }
 
