@@ -8,7 +8,7 @@ mod tests;
 #[allow(dead_code)]
 pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 8;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 2317;
 
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
@@ -50,10 +50,43 @@ mod part_one {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    fn get_index(c: char) -> Result<usize, Box<dyn Error>> {
+        Ok(match c {
+            'r' => 0,
+            'g' => 1,
+            'b' => 2,
+            _ => return Err("Unexpected character at the start of color name str!".into()),
+        })
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    fn is_possible(game_line: &str) -> Result<u64, Box<dyn Error>> {
+        let maximums = [12, 13, 14];
+        let mut parts = game_line.split([':', ';', ',']);
+        let game_id_str = parts.next().unwrap(); // Split will always contain at least one part.
+        for cubes_str in parts {
+            let mut parts = cubes_str.split(' ').filter(|s| !s.is_empty());
+            let cube_count = parts.next().ok_or("Missing cube count!")?.parse::<u8>()?;
+            let color_char = parts
+                .next()
+                .ok_or("Missing cube color!")?
+                .chars()
+                .next()
+                .unwrap();
+            if maximums[get_index(color_char)?] < cube_count {
+                return Ok(0);
+            }
+        }
+
+        let game_id = game_id_str[5..].parse::<u64>()?;
+        Ok(game_id)
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let id_sum = reader::get_lines(data_path)?
+            .map(|s| is_possible(&s))
+            .sum::<Result<u64, _>>()?;
+
+        Ok(id_sum)
     }
 }
 
