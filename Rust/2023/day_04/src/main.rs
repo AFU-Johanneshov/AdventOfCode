@@ -105,6 +105,33 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+This will be a bit more complex. We still use the same logic to see how many "wins" each card
+have. But how we handle those wins differ.
+
+This time the matches are used to "duplicate" later cards. Basically, if a card has two matches,
+then the next two cards below this one are duplicated. If only one, then only the card below is.
+
+So, we can use the same code as part one but tweak the process card function to return how many
+winning numbers that it has.
+
+One possible solution is the following:
+In the main function we collect all the process_card() return values (Including zeros) and place
+them in a list together with a second integer at each index. Vec<(u64, u64)> where the first u64
+is the return value of process_card for that row, and the second value is a 1.
+
+Once the list is completed we go back and iterate through it from the start.
+for i in 0..list.len {
+    let (matches, count) = list[i];
+
+    // Then we add [count] to the next [matches] elements [count] value.
+    for i2 in 1..matches {
+        list[i+i2].count += count.
+    }
+}
+
+Once we reach the end go back and sum all the [count] values in the list to get the answer.
+
+The goal is to figure out how many cards we end up with at the end.
 */
 mod part_two {
     use crate::reader;
