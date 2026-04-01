@@ -11,9 +11,9 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 13;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 21959;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 30;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 5132675;
 
 //
 
@@ -137,10 +137,52 @@ mod part_two {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    /// Extracts all integers in the provided string.
+    ///
+    /// Will return an error if a integer is too large to fit in a u8.
+    fn extract_integers(str: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+        Ok(str
+            .split(|c: char| !c.is_ascii_digit())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.parse::<u8>())
+            .collect::<Result<Vec<u8>, _>>()?)
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    fn process_card(card_str: &str) -> Result<u64, Box<dyn Error>> {
+        let mut parts = card_str.split(['|', ':']);
+        parts.next();
+        let (Some(winning_numbers), Some(our_numbers)) = (parts.next(), parts.next()) else {
+            return Err(format!("Unexpected card string format! [{}]", card_str).into());
+        };
+
+        let winning_numbers = extract_integers(winning_numbers)?;
+        let our_numbers = extract_integers(our_numbers)?;
+
+        let mut matches = 0;
+        for value in &our_numbers {
+            if winning_numbers.contains(value) {
+                matches += 1;
+            }
+        }
+
+        Ok(matches)
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut cards: Vec<(u64, u64)> = reader::get_lines(data_path)?
+            .map(|line| process_card(&line).map(|v| (v, 1)))
+            .collect::<Result<Vec<(u64, u64)>, _>>()?;
+
+        for i in 0..cards.len() {
+            let (matches, count) = cards[i];
+            for i in i + 1..i + 1 + matches as usize {
+                if let Some((_, other_count)) = cards.get_mut(i) {
+                    *other_count += count;
+                }
+            }
+        }
+
+        Ok(cards.iter().map(|(_, count)| count).sum())
     }
 }
 
