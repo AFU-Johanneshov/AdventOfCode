@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 4361;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 557705;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 467835;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -213,6 +213,39 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+Now we need to switch it up a bit. This time we need to scan around special gear tiles instead.
+We need to figure out which gears are next to exactly 2 different numbers. No more, no less.
+Each time a gear has two different numbers, we calculate the "gear ratio" by multiplying the two
+numbers together. Then add the result to a total.
+
+We can use the same code as part one by tweaking it a bit.
+
+First we need to add a Gear variant to the Tile enum.
+enum Tile
+    Empty,
+    Symbol,
+    Gear,
+    NumberPart,
+    NumberStart(u32, usize),
+
+Once that is done we want to add a corresponding pattern match where we build the schematic.
+'*' => schematic_line.push(Tile::Gear),
+
+Next we need to replace the scan_part_numbers function with a scan_gears function.
+The logic should be quite similar. Something like this:
+For tile in surrounding 8 tiles
+    if tile is numberpart(start_index)
+        set tile to the numberstart tile at start_index.
+
+    if tile is a numberstart(value, length) and this numberstart haven't been added yet
+        save value and index
+
+After checking all 8 tiles:
+    Check the list of connected part_numbers.
+        if the list length != 2
+            return 0
+        else
+            return the two list values multiplied together.
 */
 mod part_two {
     use crate::reader;
