@@ -175,12 +175,111 @@ changes to the get_seeds() function.
 */
 mod part_two {
     use crate::reader;
-    use std::error::Error;
+    use std::{error::Error, str::FromStr};
+
+    struct Range {
+        shift_distance: i64,
+        lower: u64,
+        upper: u64,
+    }
+
+    impl Range {
+        fn from_row(row: &str) -> Result<Range, Box<dyn Error>> {
+            let values: Vec<u64> = parse_values(row)?;
+            if values.len() != 3 {
+                return Err(format!("Row [{row}] does not have exactly 3 values!").into());
+            }
+
+            let lower = values[1];
+            let upper = values[1] + values[2];
+            let shift_distance = values[1] as i64 - values[0] as i64;
+            Ok(Range {
+                shift_distance,
+                lower,
+                upper,
+            })
+        }
+
+        fn attempt_transform(&self, value: u64) -> Option<u64> {
+            if value < self.lower || value > self.upper {
+                return None;
+            }
+
+            Some((value as i64 - self.shift_distance) as u64)
+        }
+    }
+
+    #[derive(Default)]
+    struct Map {
+        ranges: Vec<Range>,
+    }
+
+    impl Map {
+        fn read_next_map(lines: &mut dyn Iterator<Item = String>) -> Result<Map, Box<dyn Error>> {
+            let _map_name_line = lines.next();
+
+            let mut map = Map::default();
+            for line in lines {
+                if line.is_empty() {
+                    break;
+                }
+
+                map.ranges.push(Range::from_row(&line)?);
+            }
+
+            Ok(map)
+        }
+
+        fn transform_value(&self, value: u64) -> u64 {
+            for range in &self.ranges {
+                if let Some(new_value) = range.attempt_transform(value) {
+                    return new_value;
+                }
+            }
+            value
+        }
+    }
+
+    fn parse_values<T: FromStr>(row: &str) -> Result<Vec<T>, Box<dyn Error>>
+    where
+        <T as FromStr>::Err: std::error::Error,
+        <T as FromStr>::Err: 'static,
+    {
+        Ok(row
+            .split(|c: char| !c.is_ascii_digit())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.parse::<T>())
+            .collect::<Result<Vec<T>, _>>()?)
+    }
+
+    fn get_seeds(possible_row: Option<String>) -> Result<Vec<u64>, Box<dyn Error>> {
+        parse_values(&possible_row.ok_or("Missing seeds row!")?)
+    }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+        let mut lines = reader::get_lines(data_path)?;
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+        let seed_ranges = get_seeds(lines.next())?;
+
+        lines.next(); // Skip empty row after seeds line.
+
+        let mut maps = Vec::new();
+        for _ in 0..7 {
+            maps.push(Map::read_next_map(&mut lines)?);
+        }
+
+        let mut highest = u64::MAX;
+        for i in 0..seed_ranges.len() / 2 {
+            for seed in seed_ranges[i * 2]..seed_ranges[i * 2] + seed_ranges[i * 2 + 1] {
+                let mut value = seed;
+                for map in &maps {
+                    value = map.transform_value(value);
+                }
+                highest = highest.min(value);
+            }
+        }
+
+        Ok(highest)
     }
 }
 
