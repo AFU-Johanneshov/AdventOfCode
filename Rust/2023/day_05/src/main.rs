@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 35;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 403695602;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 46;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -162,6 +162,16 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+This is the classing part two puzzle. Basically do the same thing but with a LOT more values.
+It is essentially a test of scalability. Is the code scalable enough to get the result when the
+data amount is so much greater, or are major redesigns required?
+
+In this case the main difference is that the seeds row doesn't contain singular seeds, but rather
+seed ranges. The row consists of value pairs. Where the first value is the range start, and the
+second value is the range length.
+
+If the code is good enough then we should be able to simply copy part one and just make some
+changes to the get_seeds() function.
 */
 mod part_two {
     use crate::reader;
