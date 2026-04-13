@@ -13,7 +13,7 @@ pub const PART_ONE_EXPECTED_VALUE: u64 = 32076;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 71503;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 34278221;
 
 //
 
@@ -96,15 +96,62 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+Part two is rather simple actually. The main issue now is just that we need to do the same as part
+one, but with one loooong race instead of multiple shorter ones.
+
+The main thing we need to change is how we read the data. According to the instructions we need to
+ignore the spaces between the numbers. Instead merging them into a single large number.
+
+Once that is done for both rows we have a standard race with a time and distance.
+
+The method used to solve part one above should be fast enough to solve this larger race too
+without any issues.
+But, it would be interesting to try and find a different way to figure out the lowest and highest
+possible hold time. I feel like it is possible to do using math alone, but I am a bit to tired to
+figure that out at the moment.
 */
 mod part_two {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    fn get_value(possible_row: Option<String>) -> Result<u64, Box<dyn Error>> {
+        Ok(String::from_iter(
+            possible_row
+                .ok_or("Missing data row!")?
+                .split(|c: char| !c.is_ascii_digit())
+                .filter(|s| !s.is_empty()),
+        )
+        .parse::<u64>()?)
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    fn is_winner(race_time: u64, distance: u64, hold_time: u64) -> bool {
+        (race_time - hold_time) * hold_time > distance
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut lines = reader::get_lines(data_path)?;
+        let race_time = get_value(lines.next())?;
+        let distance = get_value(lines.next())?;
+
+        let (mut lower, mut higher) = (0, 0);
+
+        // Find the lowest hold time that results in a new record.
+        for hold_time in 1..race_time {
+            if is_winner(race_time, distance, hold_time) {
+                lower = hold_time;
+                break;
+            }
+        }
+
+        // Find the highest hold time that results in a new record.
+        for hold_time in (1..race_time).rev() {
+            if is_winner(race_time, distance, hold_time) {
+                higher = hold_time;
+                break;
+            }
+        }
+
+        Ok(higher - lower + 1)
     }
 }
 
