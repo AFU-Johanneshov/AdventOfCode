@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 288;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 32076;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 71503;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
