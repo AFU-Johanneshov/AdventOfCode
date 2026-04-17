@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 6;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 19099;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 6;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -139,6 +139,25 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+Part two brings some interesting changes. This time we need to calculate multiple paths at the
+same time. AAA is no longer the start, but rather any node that ends with A is. And the same
+applies to the goals. Any node ending with a Z is now a valid goal.
+
+We still need to count the iterations performed. But we only stop when ALL paths are on a node
+ending with 'Z' at the same time. Paths cen be on nodes ending with Z but unless all others are
+one one as well the next instruction will make it continue away from said node.
+
+At first I was a bit concerned that this would require I throw out my "node" translation, but I
+think it should be fine actually. A is 0, and Z is 25 after all. To figure out which letter a
+node ends with just do translated_node % 26 to get the remaining "final digit" value. If said
+value is 0 then it is A, and if it is 25 then it is Z
+
+I think we only need to update the logic for the loop in the calculate function.
+We first need to get all start nodes by iterating through all nodes adding any that ends with 'A'
+to a "current_nodes" list.
+Then we add a "for current_node in current_nodes" loop inside the current loop. Move the current
+logic for selecting the next node into the new for loop. And finally after the for loop we add a
+check that stops the loop if all nodes currently ends with 'Z'
 */
 mod part_two {
     use crate::reader;
