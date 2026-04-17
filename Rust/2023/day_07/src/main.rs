@@ -8,7 +8,7 @@ mod tests;
 #[allow(dead_code)]
 pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 6440;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 250232501;
 
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
@@ -65,10 +65,141 @@ mod part_one {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    #[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
+    enum HandType {
+        FiveOfKind,
+        FourOfKind,
+        FullHouse,
+        ThreeOfKind,
+        TwoPair,
+        OnePair,
+        HighCard,
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    impl HandType {
+        fn from_cards(cards: &[u8; 13]) -> Result<HandType, Box<dyn Error>> {
+            let mut card_groups = Vec::new();
+            for card in cards {
+                if *card != 0 {
+                    card_groups.push(card);
+                }
+            }
+
+            Ok(match card_groups.len() {
+                5 => HandType::HighCard,
+                4 => HandType::OnePair,
+                3 => {
+                    for card_count in card_groups {
+                        match card_count {
+                            3 => return Ok(HandType::ThreeOfKind),
+                            2 => return Ok(HandType::TwoPair),
+                            _ => {}
+                        }
+                    }
+                    return Err(format!("Could not determine type of {cards:?}").into());
+                }
+                2 => {
+                    if *card_groups[0] == 1 || *card_groups[0] == 4 {
+                        HandType::FourOfKind
+                    } else {
+                        HandType::FullHouse
+                    }
+                }
+                1 => HandType::FiveOfKind,
+                _ => return Err(format!("Invalid group count {}!", card_groups.len()).into()),
+            })
+        }
+    }
+
+    #[derive(Debug)]
+    struct Hand {
+        raw_cards: [u8; 5],
+        hand_type: HandType,
+        bid: u64,
+    }
+
+    impl Hand {
+        fn from_str(str: &str) -> Result<Hand, Box<dyn Error>> {
+            let mut parts = str.split(' ');
+            let (cards, raw_cards) =
+                get_cards(parts.next().expect("There is always at least 1 part!"))?;
+            let bid = parts.next().ok_or("Missing bid string!")?.parse::<u64>()?;
+
+            let hand_type = HandType::from_cards(&cards)?;
+
+            Ok(Hand {
+                raw_cards,
+                hand_type,
+                bid,
+            })
+        }
+    }
+
+    impl Ord for Hand {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            self.hand_type
+                .cmp(&other.hand_type)
+                .then(self.raw_cards.cmp(&other.raw_cards).reverse())
+        }
+    }
+
+    impl PartialOrd for Hand {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    impl PartialEq for Hand {
+        fn eq(&self, other: &Self) -> bool {
+            self.hand_type == other.hand_type && self.raw_cards == other.raw_cards
+        }
+    }
+
+    impl Eq for Hand {}
+
+    fn get_cards(str: &str) -> Result<([u8; 13], [u8; 5]), Box<dyn Error>> {
+        let mut cards = [0; 13];
+        let mut raw_cards = [0; 5];
+        for (i, c) in str.chars().enumerate() {
+            let Some(kind) = get_kind(c) else {
+                return Err(format!("Invalid char {c} in card string!").into());
+            };
+
+            cards[kind as usize] += 1;
+            raw_cards[i] = kind;
+        }
+
+        Ok((cards, raw_cards))
+    }
+
+    fn get_kind(c: char) -> Option<u8> {
+        // Since the lowest card value is 2 we can shift all ids two steps to the left.
+        Some(match c {
+            c if c.is_ascii_digit() => c.to_digit(10)? as u8 - 2,
+            'T' => 8,
+            'J' => 9,
+            'Q' => 10,
+            'K' => 11,
+            'A' => 12,
+            _ => return None,
+        })
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut hands = Vec::new();
+        for line in reader::get_lines(data_path)? {
+            hands.push(Hand::from_str(&line)?);
+        }
+
+        hands.sort();
+        hands.reverse();
+
+        let result = hands
+            .iter()
+            .enumerate()
+            .map(|(i, hand)| hand.bid * (i + 1) as u64)
+            .sum();
+        Ok(result)
     }
 }
 
