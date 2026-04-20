@@ -158,6 +158,20 @@ to a "current_nodes" list.
 Then we add a "for current_node in current_nodes" loop inside the current loop. Move the current
 logic for selecting the next node into the new for loop. And finally after the for loop we add a
 check that stops the loop if all nodes currently ends with 'Z'
+
+Edit: Seems like the puzzle instructions mentioning it taking "significantly more steps" to
+find the goal was a warning.
+The following code passes the test data but is taking ages with the full data. It will
+probably solve it eventually, but I have no idea if that is a few minutes or over a day.
+
+I think we need to figure out a better way of doing this. Maybe figure out the exact "loop"
+each path goes in, then just use math to figure out when all loops are at a end node.
+
+Edit 2:
+No new progress today.
+Left the program running for over 4 and a half hours without getting to the result.
+Managed to calculate over 415 billion steps in that time. (415000000000).
+Have to stop it now so better luck next time I guess. :/
 */
 mod part_two {
     use crate::reader;
@@ -208,14 +222,6 @@ mod part_two {
     // integers because it limits the type of nodes, and should in theory be more efficient as a
     // integer is primitive type compared to a full string.
     // It is also a fun challenge. :)
-    //
-    // Edit: Seems like the puzzle instructions mentioning it taking "significantly more steps" to
-    // find the goal was a warning.
-    // The following code passes the test data but is taking ages with the full data. It will
-    // probably solve it eventually, but I have no idea if that is a few minutes or over a day.
-    //
-    // I think we need to figure out a better way of doing this. Maybe figure out the exact "loop"
-    // each path goes in, then just use math to figure out when all loops are at a end node.
     fn translate_node(node_name: &str) -> Result<u32, Box<dyn Error>> {
         let (mut multiplier, mut result) = (1, 0);
         // reversing the order isn't actually needed. The program solves the puzzle just fine
@@ -243,20 +249,41 @@ mod part_two {
 
         let mut iterations = 0;
 
-        benchmark!("Calculation loop", {
-            loop {
+        println!("cnl: {}", current_nodes.len());
+
+        let mut start_time = std::time::Instant::now();
+
+        loop {
+            println!("");
+            benchmark!("Whole iteration", {
                 let instruction = instructions[iterations % instructions.len()] as usize;
-                for node in current_nodes.iter_mut() {
-                    *node = nodes.get(node).ok_or("A requested node did not exist!")?[instruction];
-                }
+
+                benchmark!("current_nodes", {
+                    for _ in current_nodes
+                        .iter_mut()
+                        .map(|node| *node = nodes.get(node).unwrap()[instruction])
+                    {
+                    } // */
+                });
+
                 iterations += 1;
+
+                benchmark!("print", {
+                    if iterations % 10000000 == 0 {
+                        println!(
+                            "Current: {} - Calculated 10 000 000 steps in: {:?}",
+                            iterations,
+                            start_time.elapsed(),
+                        );
+                        start_time = std::time::Instant::now();
+                    }
+                });
 
                 if current_nodes.iter().all(|n| n % 26 == 25) {
                     break;
                 }
-            }
-        });
-
+            });
+        }
         Ok(iterations as u64)
     }
 }
