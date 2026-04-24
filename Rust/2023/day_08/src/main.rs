@@ -172,10 +172,20 @@ No new progress today.
 Left the program running for over 4 and a half hours without getting to the result.
 Managed to calculate over 415 billion steps in that time. (415000000000).
 Have to stop it now so better luck next time I guess. :/
+
+Edit 3:
+Began testing some ideas. First of all just trying to figure out the length of each loop.
+Basically we iterate through the instructions like Part One, then save which instruction index
+we are on for every node we visit. Once we find a node we have visited already while having the
+same instruction index, then we know we found a loop. Since we would get the same instruction
+sequence from that point on.
 */
 mod part_two {
     use crate::reader;
-    use std::{collections::HashMap, error::Error};
+    use std::{
+        collections::{HashMap, HashSet},
+        error::Error,
+    };
 
     // The reason to return a bool array instead of a integer array is that we know the following:
     // 1: There are ONLY two types of instruction. L or R.
@@ -234,6 +244,46 @@ mod part_two {
         Ok(result)
     }
 
+    fn get_loop_length(
+        instructions: &Vec<bool>,
+        node_map: &HashMap<u32, [u32; 2]>,
+        start_nodes: &Vec<u32>,
+    ) -> Result<(), Box<dyn Error>> {
+        for node in start_nodes {
+            let mut visited_nodes: HashMap<u32, HashMap<u16, usize>> = HashMap::new();
+            let mut current_node = *node;
+
+            visited_nodes.entry(current_node).or_default().insert(0, 0);
+            let mut iterations = 0;
+
+            loop {
+                let instruction_index = iterations % instructions.len();
+                current_node =
+                    node_map.get(&current_node).unwrap()[instructions[instruction_index] as usize];
+
+                if let Some(last_visit) = visited_nodes
+                    .entry(current_node)
+                    .or_default()
+                    .insert(instruction_index as u16, iterations)
+                {
+                    println!("Found loop starting at iteration: {} and ending at iteration: {} for a total length of: {}", last_visit, iterations, iterations - last_visit);
+                    break;
+                }
+                /*
+                if !visited_nodes
+                    .entry(current_node)
+                    .or_default()
+                    .insert(instruction_index as u16, iterations)
+                {
+                    println!("Loop length: {}", iterations);
+                    break;
+                }*/
+                iterations += 1;
+            }
+        }
+        Ok(())
+    }
+
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let mut lines = reader::get_lines(data_path)?;
 
@@ -250,6 +300,10 @@ mod part_two {
         let mut iterations = 0;
 
         println!("cnl: {}", current_nodes.len());
+
+        get_loop_length(&instructions, &nodes, &current_nodes)?;
+
+        todo!();
 
         let mut start_time = std::time::Instant::now();
 
