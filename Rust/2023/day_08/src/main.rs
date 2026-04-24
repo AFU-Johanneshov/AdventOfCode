@@ -179,12 +179,23 @@ Basically we iterate through the instructions like Part One, then save which ins
 we are on for every node we visit. Once we find a node we have visited already while having the
 same instruction index, then we know we found a loop. Since we would get the same instruction
 sequence from that point on.
+
+Edit 4:
+It seems like even though each loop is somewhere around 17000 steps, each loop only ever visit
+a total of 1 end nodes. Apparently, the endpoints are all at the exact same instruction index.
+It seems that once the first endpoint for each path is found the following can be found using the
+following formula: total_steps * n + n. Meaning if the endpoint is found at 21250, then the
+next is at 42501. And the one after that is 21250 * 3 + 3. And so on.
+This should be enough to "brute force" the solution. Although I am sure a better math algorithm
+could be used to figure out the answer.
 */
 mod part_two {
     use crate::reader;
+    use core::panic;
     use std::{
         collections::{HashMap, HashSet},
         error::Error,
+        iter,
     };
 
     // The reason to return a bool array instead of a integer array is that we know the following:
@@ -244,30 +255,100 @@ mod part_two {
         Ok(result)
     }
 
-    fn get_loop_length(
+    #[derive(Debug)]
+    struct PathLoop {
+        offset: u64,
+        endpoint_steps: u64,
+        loop_length: u64,
+    }
+
+    fn get_paths(
         instructions: &Vec<bool>,
         node_map: &HashMap<u32, [u32; 2]>,
         start_nodes: &Vec<u32>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<Vec<PathLoop>, Box<dyn Error>> {
+        let mut paths = Vec::new();
+
         for node in start_nodes {
             let mut visited_nodes: HashMap<u32, HashMap<u16, usize>> = HashMap::new();
             let mut current_node = *node;
-
-            visited_nodes.entry(current_node).or_default().insert(0, 0);
             let mut iterations = 0;
+            visited_nodes.entry(current_node).or_default().insert(0, 0);
+
+            let mut endpoint_steps = iterations;
 
             loop {
                 let instruction_index = iterations % instructions.len();
                 current_node =
                     node_map.get(&current_node).unwrap()[instructions[instruction_index] as usize];
 
+                if current_node % 26 == 25 {
+                    endpoint_steps = iterations;
+                }
+
                 if let Some(last_visit) = visited_nodes
                     .entry(current_node)
                     .or_default()
                     .insert(instruction_index as u16, iterations)
                 {
-                    println!("Found loop starting at iteration: {} and ending at iteration: {} for a total length of: {}", last_visit, iterations, iterations - last_visit);
+                    let offset = (iterations - last_visit) as u64;
+                    let endpoint_steps = endpoint_steps as u64 - offset;
+                    let loop_length = iterations as u64 - offset;
+                    paths.push(PathLoop {
+                        offset,
+                        endpoint_steps,
+                        loop_length,
+                    });
                     break;
+                }
+            }
+        }
+
+        Ok(paths)
+    }
+
+    /*
+    fn get_endpoints(
+        instructions: &Vec<bool>,
+        node_map: &HashMap<u32, [u32; 2]>,
+        start_nodes: &Vec<u32>,
+    ) -> Result<Vec<usize>, Box<dyn Error>> {
+        let mut endpoints = Vec::new();
+        for node in start_nodes {
+            let mut visited_nodes: HashMap<u32, HashMap<u16, usize>> = HashMap::new();
+            let mut current_node = *node;
+
+            visited_nodes.entry(current_node).or_default().insert(0, 0);
+            let mut iterations = 0;
+            let mut a = 0;
+
+            loop {
+                let instruction_index = iterations % instructions.len();
+                current_node =
+                    node_map.get(&current_node).unwrap()[instructions[instruction_index] as usize];
+
+                if current_node % 26 == 25 {
+                    endpoints.push(iterations);
+                    //break;
+                    println!(
+                        "Endpoint instruction index: {} after {} steps having looped the instructions {} times",
+                        instruction_index, iterations, iterations / instructions.len()
+                    );
+                }
+
+                if let Some(last_visit) = visited_nodes
+                    .entry(current_node)
+                    .or_default()
+                    .insert(instruction_index as u16, iterations)
+                {
+                    //println!("Found loop starting at iteration: {} and ending at iteration: {} for a total length of: {} having visited: {} endpoints.", last_visit, iterations, iterations - last_visit, endpoints);
+                    //break;
+                    if current_node % 26 == 25 {
+                        a += 1;
+                        if a == 3 {
+                            break;
+                        }
+                    }
                 }
                 /*
                 if !visited_nodes
@@ -281,13 +362,63 @@ mod part_two {
                 iterations += 1;
             }
         }
-        Ok(())
+        Ok(endpoints)
+    }*/
+
+    fn find_smallest_common_value(numbers: &[u64], n: u64) -> Result<u64, String> {
+        let mut core_value: Option<u64> = None;
+        let mut max_steps: u32 = 0;
+
+        for &number in numbers {
+            let mut adjusted = number + 1;
+            let mut steps: u32 = 0;
+
+            while adjusted % n == 0 {
+                adjusted /= n;
+                steps += 1;
+            }
+
+            match core_value {
+                None => core_value = Some(adjusted),
+                Some(value) => {
+                    if value != adjusted {
+                        return Err("Numbers cannot meet".to_string());
+                    }
+                }
+            }
+
+            if steps > max_steps {
+                max_steps = steps;
+            }
+        }
+
+        let base = core_value.unwrap();
+        let target_adjusted = base * n.pow(max_steps);
+
+        Ok(target_adjusted - 1)
+    }
+    fn gcd(mut a: u64, mut b: u64) -> u64 {
+        while b != 0 {
+            let temp = b;
+            b = a % b;
+            a = temp;
+        }
+        a
+    }
+
+    fn lcm(a: u64, b: u64) -> u64 {
+        a / gcd(a, b) * b
+    }
+
+    fn lcm_list(numbers: &[u64]) -> u64 {
+        numbers.iter().copied().reduce(lcm).unwrap()
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let mut lines = reader::get_lines(data_path)?;
 
         let instructions = get_instructions(&lines.next().ok_or("Data file is empty!")?)?;
+        println!("instructions len: {}", instructions.len());
         lines.next(); // Skip empty row.
 
         let nodes = get_nodes(&mut lines)?;
@@ -301,10 +432,65 @@ mod part_two {
 
         println!("cnl: {}", current_nodes.len());
 
-        get_loop_length(&instructions, &nodes, &current_nodes)?;
+        let paths = get_paths(&instructions, &nodes, &current_nodes)?;
+
+        println!("{:?}", paths);
 
         todo!();
+        //let mut n = 2i64;
 
+        /*
+        let mut core_value = -1;
+        let mut max_steps = 0;
+
+
+        for number in &endpoints {
+            let mut adjusted = number + 1;
+            let mut steps = 0;
+
+            while adjusted % 2 == 0 {
+                adjusted /= 2;
+                steps += 1;
+            }
+
+            if core_value == -1 {
+                core_value = adjusted as i64;
+            } else if core_value != adjusted as i64 {
+                //panic!("Numbers doesn't meet!");
+            }
+
+            max_steps = max_steps.max(steps);
+        }
+
+        let target_adjusted = core_value * (2_i64.pow(max_steps));
+        println!("Result = {}", target_adjusted - 1); */
+
+        /*
+
+        def find_smallest_common_value(numbers, n):
+            core_value = None
+            max_steps = 0
+
+            for number in numbers:
+                adjusted = number + 1
+                steps = 0
+
+                while adjusted % n == 0:
+                    adjusted //= n
+                    steps += 1
+
+                if core_value is None:
+                    core_value = adjusted
+                elif core_value != adjusted:
+                    raise ValueError("Numbers cannot meet")
+
+                max_steps = max(max_steps, steps)
+
+            target_adjusted = core_value * (n ** max_steps)
+            return target_adjusted - 1
+
+
+                */
         let mut start_time = std::time::Instant::now();
 
         loop {
