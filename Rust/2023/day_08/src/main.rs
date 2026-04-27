@@ -171,6 +171,7 @@ Edit 2:
 No new progress today.
 Left the program running for over 4 and a half hours without getting to the result.
 Managed to calculate over 415 billion steps in that time. (415000000000).
+17099847107071
 Have to stop it now so better luck next time I guess. :/
 
 Edit 3:
@@ -276,6 +277,8 @@ mod part_two {
             visited_nodes.entry(current_node).or_default().insert(0, 0);
 
             let mut endpoint_steps = iterations;
+            let mut c = 0;
+            let mut a = 0;
 
             loop {
                 let instruction_index = iterations % instructions.len();
@@ -284,22 +287,69 @@ mod part_two {
 
                 if current_node % 26 == 25 {
                     endpoint_steps = iterations;
+                    println!(
+                        "Found end at iteration {}, {} steps since last endpoint.",
+                        iterations, c
+                    );
+                    c = 0;
+                    a += 1;
+                    if a == 5 {
+                        println!();
+                        break;
+                    }
                 }
+                c += 1;
 
                 if let Some(last_visit) = visited_nodes
                     .entry(current_node)
                     .or_default()
                     .insert(instruction_index as u16, iterations)
                 {
-                    let offset = (iterations - last_visit) as u64;
-                    let endpoint_steps = endpoint_steps as u64 - offset;
+                    let offset = last_visit as u64;
+                    let endpoint_steps = endpoint_steps as u64;
                     let loop_length = iterations as u64 - offset;
                     paths.push(PathLoop {
                         offset,
                         endpoint_steps,
                         loop_length,
                     });
-                    break;
+
+                    /*println!("Path found. Offset: {}, Endpoint iterations: {}, Endpoint steps in loop: {}, Loop length: {}",
+                    offset, endpoint_steps, endpoint_steps - offset, loop_length); // */
+                    //break;
+                }
+                iterations += 1;
+            }
+        }
+
+        Ok(paths)
+    }
+
+    fn get_p(
+        instructions: &Vec<bool>,
+        node_map: &HashMap<u32, [u32; 2]>,
+        start_nodes: &Vec<u32>,
+    ) -> Result<Vec<(u64, u64)>, Box<dyn Error>> {
+        let mut paths: Vec<(u64, u64)> = Vec::new();
+
+        for node in start_nodes {
+            let mut iterations = 0u64;
+            let mut current_node = *node;
+            let mut start_point = None;
+            loop {
+                let instruction_index = iterations % instructions.len() as u64;
+                current_node = node_map.get(&current_node).unwrap()
+                    [instructions[instruction_index as usize] as usize];
+
+                iterations += 1;
+
+                if current_node % 26 == 25 {
+                    if let Some(start_point) = start_point {
+                        paths.push((start_point, iterations - start_point));
+                        break;
+                    } else {
+                        start_point = Some(iterations);
+                    }
                 }
             }
         }
@@ -397,21 +447,16 @@ mod part_two {
 
         Ok(target_adjusted - 1)
     }
-    fn gcd(mut a: u64, mut b: u64) -> u64 {
-        while b != 0 {
-            let temp = b;
-            b = a % b;
-            a = temp;
+
+    pub fn gcd(mut n: u64, mut m: u64) -> u64 {
+        assert!(n != 0 && m != 0);
+        while m != 0 {
+            if m < n {
+                std::mem::swap(&mut m, &mut n);
+            }
+            m %= n;
         }
-        a
-    }
-
-    fn lcm(a: u64, b: u64) -> u64 {
-        a / gcd(a, b) * b
-    }
-
-    fn lcm_list(numbers: &[u64]) -> u64 {
-        numbers.iter().copied().reduce(lcm).unwrap()
+        n
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
@@ -428,15 +473,20 @@ mod part_two {
             .filter_map(|n| if n % 26 == 0 { Some(*n) } else { None })
             .collect::<Vec<u32>>();
 
-        let mut iterations = 0;
+        let paths = get_p(&instructions, &nodes, &current_nodes)?;
+        println!("p: {paths:?}");
 
-        println!("cnl: {}", current_nodes.len());
+        let mut g = 0;
+        let mut a = 1;
+        benchmark!("c", {
+            for (_, v) in paths {
+                g = gcd(a, v);
+                a = v * a / g;
+            }
+        });
 
-        let paths = get_paths(&instructions, &nodes, &current_nodes)?;
+        Ok(a)
 
-        println!("{:?}", paths);
-
-        todo!();
         //let mut n = 2i64;
 
         /*
@@ -491,6 +541,7 @@ mod part_two {
 
 
                 */
+        /*
         let mut start_time = std::time::Instant::now();
 
         loop {
@@ -503,7 +554,7 @@ mod part_two {
                         .iter_mut()
                         .map(|node| *node = nodes.get(node).unwrap()[instruction])
                     {
-                    } // */
+                    } //
                 });
 
                 iterations += 1;
@@ -524,7 +575,7 @@ mod part_two {
                 }
             });
         }
-        Ok(iterations as u64)
+        Ok(iterations as u64) */
     }
 }
 
