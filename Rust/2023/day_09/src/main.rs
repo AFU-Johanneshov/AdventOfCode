@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 114;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 1861775706;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 2;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -84,6 +84,16 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+Part two seems to be the exact same just instead of handling the last number we instead try to
+find the first.
+
+I think it should be solvable by simply copying the part one solution, and then changing the
+"numbers" index to 0 instead of "numbers.len() - 1. We will probably need to change the math a
+bit as well to get the lower value instead, but not sure how yet.
+
+Note that while the puzzle mentions adding numbers at the end/start actually doing so is actually
+pointless. For part one the result number is actually just the sum of all the last numbers, and
+the same should be true for part two. The result should be the sum of all the first numbers.
 */
 mod part_two {
     use crate::reader;
