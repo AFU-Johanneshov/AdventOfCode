@@ -13,7 +13,7 @@ pub const PART_ONE_EXPECTED_VALUE: u64 = 1861775706;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 2;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 1082;
 
 //
 
@@ -99,10 +99,32 @@ mod part_two {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    fn worker(numbers: &[i64]) -> i64 {
+        if numbers.iter().all(|v| *v == 0) {
+            return 0;
+        }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+        let mut differences = Vec::new();
+        for i in 1..numbers.len() {
+            differences.push(numbers[i] - numbers[i - 1]);
+        }
+
+        numbers[0] - worker(&differences)
+    }
+
+    fn process_line(data_line: &str) -> Result<i64, Box<dyn Error>> {
+        let numbers = data_line
+            .split(|c: char| !c.is_ascii_digit() && c != '-')
+            .filter(|s| !s.is_empty())
+            .map(|s| s.parse::<i64>())
+            .collect::<Result<Vec<i64>, _>>()?;
+        Ok(worker(&numbers))
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        Ok(reader::get_lines(data_path)?
+            .map(|line| process_line(&line))
+            .sum::<Result<i64, _>>()? as u64)
     }
 }
 
