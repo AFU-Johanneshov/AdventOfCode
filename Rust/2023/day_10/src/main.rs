@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 8;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 6968;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 10;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -153,6 +153,19 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+Part two gives us a quite different task. Instead of finding the length of the loop, we need to
+find how many tiles are INSIDE the loop. Tiles only count as inside if they truly are on the
+inside of the loop. Pockets formed by the loop turning invards parallel with itself forming a
+small pocket visually inside still count as outside the loop.
+One way to view it is that if we traverse the loop edge clockwise, then any tiles to the right is
+inside, while any to the left is outside.
+
+One way we could do this is to add a visited field at each tile in the map grid.
+Then we iterate through all rows one at a time.
+When we find a visited tile we toggle a "inside" bool. If the "inside" bool is true then any tile
+we find that is not visited has to be inside the loop. Then all we need to do is to count them by
+adding 1 to a total for each we find.
+Once all rows has been processed we should have our answer in the total.
 */
 mod part_two {
     use crate::reader;
