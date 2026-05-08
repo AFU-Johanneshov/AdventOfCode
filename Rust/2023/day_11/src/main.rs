@@ -8,7 +8,7 @@ mod tests;
 #[allow(dead_code)]
 pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 374;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 9177603;
 
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
@@ -53,10 +53,87 @@ mod part_one {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    struct Map {
+        grid: Vec<Vec<bool>>,
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    struct Galaxies(Vec<(i32, i32)>);
+
+    fn verify(map: Map) -> Result<Map, Box<dyn Error>> {
+        let row_len = map.grid.first().ok_or("Error: Map is empty!")?.len();
+        if map.grid.iter().any(|r| r.len() != row_len) {
+            return Err("Error: Map row lengths differ!".into());
+        }
+        Ok(map)
+    }
+
+    fn load_map(data_path: &str) -> Result<(Map, Galaxies), Box<dyn Error>> {
+        let mut map = Map { grid: Vec::new() };
+        let mut galaxies = Vec::new();
+        for (y, line) in reader::get_lines(data_path)?.enumerate() {
+            let mut row = Vec::new();
+            for (x, c) in line.chars().enumerate() {
+                row.push(match c {
+                    '.' => false,
+                    '#' => {
+                        galaxies.push((x as i32, y as i32));
+                        true
+                    }
+                    _ => return Err(format!("Unexpected char {c} in data string!").into()),
+                });
+            }
+            map.grid.push(row);
+        }
+
+        Ok((verify(map)?, Galaxies(galaxies)))
+    }
+
+    fn move_galaxies(x: i32, y: i32, galaxies: &mut Galaxies) {
+        for galaxy in galaxies.0.iter_mut() {
+            if galaxy.0 > x {
+                galaxy.0 += 1;
+            }
+            if galaxy.1 > y {
+                galaxy.1 += 1;
+            }
+        }
+    }
+
+    fn adjust_galaxy_positions(map: &Map, galaxies: &mut Galaxies) {
+        let mut y_offset = 0;
+        for (y, row) in map.grid.iter().enumerate() {
+            if row.iter().all(|b| !b) {
+                move_galaxies(i32::MAX, y as i32 + y_offset, galaxies);
+                y_offset += 1;
+            }
+        }
+
+        let mut x_offset = 0;
+        'outer: for x in 0..map.grid[0].len() {
+            for row in &map.grid {
+                if row[x] {
+                    continue 'outer;
+                }
+            }
+            move_galaxies(x as i32 + x_offset, i32::MAX, galaxies);
+            x_offset += 1;
+        }
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let (map, mut galaxies) = load_map(data_path)?;
+
+        adjust_galaxy_positions(&map, &mut galaxies);
+
+        let mut total = 0;
+        for i in 0..galaxies.0.len() - 1 {
+            let origin = galaxies.0[i];
+            for other in galaxies.0.iter().skip(i) {
+                total += ((origin.0 - other.0).abs() + (origin.1 - other.1).abs()) as u64;
+            }
+        }
+
+        Ok(total)
     }
 }
 
