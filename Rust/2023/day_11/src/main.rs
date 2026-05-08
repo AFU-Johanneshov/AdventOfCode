@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 374;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 9177603;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 8410;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -145,6 +145,20 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+How nice. This time it might actually be possible to only make a tiny change to the Part One code
+for part two to pass.
+
+Basically the difference in part two is that instead of each empty row/column increasing in size
+by 1, they are instead meant to increase by 1 000 000.
+
+Using the math based approach as we did in part one, it should be as simple as to just update the
+adjust_galaxy_positions and move_galaxies functions to increase the offset and position by one
+million instead of 1.
+
+Unfortunately no example is provided for the 1 000 000 increase, only for 10 and 100.
+The test will therefor be set to the expected answer for 100. Once that passes, simply add four
+zeros and see if the full data result is correct. If so, then update the test to match the
+received value.
 */
 mod part_two {
     use crate::reader;
