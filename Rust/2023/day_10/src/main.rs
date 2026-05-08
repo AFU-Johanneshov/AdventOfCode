@@ -13,7 +13,7 @@ pub const PART_ONE_EXPECTED_VALUE: u64 = 6968;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 10;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 413;
 
 //
 
@@ -106,7 +106,7 @@ mod part_one {
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let mut map = get_map(data_path)?;
+        let map = get_map(data_path)?;
 
         for (dir_index, direction) in DIRECTIONS.iter().enumerate() {
             let mut current_pos = (
@@ -169,12 +169,195 @@ Once all rows has been processed we should have our answer in the total.
 */
 mod part_two {
     use crate::reader;
+    use core::panic;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+    #[derive(Clone, Copy)]
+    enum TileType {
+        Empty,
+        /// The bool array represents the 4 possible connection directions.
+        /// 0 = Up
+        /// 1 = Right
+        /// 2 = Down
+        /// 3 = Left
+        Pipe([bool; 4]),
+        Start,
+    }
+
+    const DIRECTIONS: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
+    impl TileType {
+        fn from_char(c: char) -> Result<TileType, Box<dyn Error>> {
+            Ok(match c {
+                '|' => TileType::Pipe([true, false, true, false]),
+                '-' => TileType::Pipe([false, true, false, true]),
+                'L' => TileType::Pipe([true, true, false, false]),
+                'J' => TileType::Pipe([true, false, false, true]),
+                '7' => TileType::Pipe([false, false, true, true]),
+                'F' => TileType::Pipe([false, true, true, false]),
+                '.' => TileType::Empty,
+                'S' => TileType::Start,
+                _ => return Err(format!("Invalid char {c} found in data!").into()),
+            })
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    struct Tile {
+        kind: TileType,
+        visited: bool,
+        inside: bool,
+    }
+
+    impl Tile {
+        fn new(kind: TileType) -> Tile {
+            Tile {
+                kind,
+                visited: false,
+                inside: false,
+            }
+        }
+    }
+
+    struct Map {
+        grid: [[Tile; 142]; 142],
+        start_pos: (usize, usize),
+    }
+
+    fn get_map(data_path: &str) -> Result<Map, Box<dyn Error>> {
         let lines = reader::get_lines(data_path)?;
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+        let mut grid = [[Tile::new(TileType::Empty); 142]; 142];
+        let mut start_pos = (0, 0);
+        for (y, line) in lines.enumerate() {
+            for (x, c) in line.chars().enumerate() {
+                grid[x + 1][y + 1] = Tile::new(TileType::from_char(c)?);
+                if c == 'S' {
+                    start_pos = (x + 1, y + 1);
+                }
+            }
+        }
+
+        Ok(Map { grid, start_pos })
+    }
+
+    fn scan_pipe_loop(map: &mut Map) -> Result<(), Box<dyn Error>> {
+        for (dir_index, direction) in DIRECTIONS.iter().enumerate() {
+            let mut current_pos = (
+                map.start_pos.0 as i32 + direction.0,
+                map.start_pos.1 as i32 + direction.1,
+            );
+
+            map.grid[current_pos.0 as usize][current_pos.1 as usize].visited = true;
+
+            let mut dir = dir_index;
+            loop {
+                map.grid[current_pos.0 as usize][current_pos.1 as usize].visited = true;
+                map.grid[current_pos.0 as usize][current_pos.1 as usize].inside = false;
+                match map.grid[current_pos.0 as usize][current_pos.1 as usize].kind {
+                    TileType::Empty => break,
+                    TileType::Start => return Ok(()),
+                    TileType::Pipe(pipe_connections) => {
+                        let opposite = (dir + 2) % 4;
+                        if !pipe_connections[opposite] {
+                            break;
+                        }
+
+                        let old_dir = dir;
+                        for (i, connection) in pipe_connections.iter().enumerate() {
+                            if i != opposite && *connection {
+                                dir = i;
+                            }
+                        }
+
+                        // Mark the right side of the input pipe as inside
+                        let right_side = DIRECTIONS[(old_dir + 1) % 4];
+                        let neighbour = &mut map.grid[(current_pos.0 + right_side.0) as usize]
+                            [(current_pos.1 + right_side.1) as usize];
+                        if !neighbour.visited {
+                            neighbour.inside = true;
+                        }
+
+                        // Mark the right side of the output pipe as inside
+                        let right_side = DIRECTIONS[(dir + 1) % 4];
+                        let neighbour = &mut map.grid[(current_pos.0 + right_side.0) as usize]
+                            [(current_pos.1 + right_side.1) as usize];
+                        if !neighbour.visited {
+                            neighbour.inside = true;
+                        }
+
+                        current_pos = (
+                            current_pos.0 + DIRECTIONS[dir].0,
+                            current_pos.1 + DIRECTIONS[dir].1,
+                        );
+                    }
+                }
+            }
+        }
+
+        Err("No pipe loop found!".into())
+    }
+
+    fn inside_is_outside(map: &Map) -> bool {
+        for row in map.grid {
+            for tile in row {
+                if tile.inside {
+                    return true;
+                } else if tile.visited {
+                    return false;
+                }
+            }
+        }
+        panic!("No tiles are marked visited OR inside. This should not be possible.");
+    }
+
+    // TODO: Warning!
+    // None of the data examples I have seen has any invalid paths conneected to S. Meaning we can
+    // assume that we wont ever walk any invalid path. Which in turn means we can set the pipes we
+    // visit to visited without fear of having to clear the visited status if the pipe we follow
+    // reaches a dead end.
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut map = get_map(data_path)?;
+
+        scan_pipe_loop(&mut map)?;
+
+        let mut tiles_inside = 0;
+        if inside_is_outside(&map) {
+            println!("Inside is outside!");
+            for row in map.grid {
+                let mut last_tile = Tile::new(TileType::Empty);
+                let mut counting = false;
+                for tile in row {
+                    if last_tile.visited && !tile.visited && !tile.inside {
+                        counting = true;
+                        tiles_inside += 1;
+                    } else if !last_tile.visited && !last_tile.inside && tile.visited {
+                        counting = false;
+                    } else if !tile.visited && counting {
+                        tiles_inside += 1;
+                    }
+                    last_tile = tile;
+                }
+            }
+        } else {
+            println!("Inside is inside as expected.");
+            for row in map.grid {
+                //let mut last_tile = Tile::new(TileType::Empty);
+                let mut counting = false;
+                for tile in row {
+                    if tile.visited {
+                        counting = false;
+                    } else if tile.inside {
+                        counting = true;
+                        tiles_inside += 1;
+                    } else if counting {
+                        tiles_inside += 1;
+                    }
+                }
+            }
+        }
+
+        Ok(tiles_inside)
     }
 }
 
