@@ -41,11 +41,22 @@ One thing we might be able to do is to split the problem if we find a broken til
 only ever be in one location. Then we could split the tile sequence before and after those tiles
 adding one on both sides as padding. Then we split the numbers at the tile number in question and
 calculate the two now separate tile and number sequnces. Once both are calculated multiply the
-two results together to get the total potential arrqagnements.
+two results together to get the total potential arrangements.
 
 But to actually get this done we need more than that.
 
 Further planning required...
+
+Looking at the data I noticed some things.
+Firstly, just checking the first rows tells me that the majority of the broken tile groups can
+actually only be in one location. Hinting again that what we need is to find a way to filter out
+any parts that are locked to one position.
+And since we are meant to count unique arrangements we can ignore them when counting since they
+will never affect the amount of unique arrangements.
+
+The question now is just how to find these "locked" groups of tiles.
+
+Another way could be to try and clear the unknowns and replace them with safe/broken tiles.
 */
 mod part_one {
     use crate::reader;
