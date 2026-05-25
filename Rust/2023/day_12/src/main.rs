@@ -62,10 +62,80 @@ mod part_one {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    #[derive(Debug, PartialEq)]
+    enum Tile {
+        Safe,
+        Broken,
+        Unknown,
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    impl Tile {
+        fn from_char(c: char) -> Result<Option<Tile>, Box<dyn Error>> {
+            Ok(match c {
+                '.' => None,
+                '#' => Some(Tile::Broken),
+                '?' => Some(Tile::Unknown),
+                _ => return Err(format!("Unexpected char {c} in data!").into()),
+            })
+        }
+    }
+
+    #[derive(Default, Debug)]
+    struct TileGroup {
+        tiles: Vec<Tile>,
+    }
+
+    impl TileGroup {}
+
+    fn process_line(data_line: &str) -> Result<(Vec<TileGroup>, Vec<usize>), Box<dyn Error>> {
+        let mut groups: Vec<TileGroup> = Vec::new();
+
+        let mut line_parts = data_line.split(' ');
+
+        let mut group = TileGroup::default();
+        println!();
+        for c in line_parts.next().unwrap().chars() {
+            print!("{}", c);
+            if let Some(tile) = Tile::from_char(c)? {
+                group.tiles.push(tile);
+            } else if !group.tiles.is_empty() {
+                groups.push(group);
+                group = TileGroup::default();
+            }
+        }
+        if !group.tiles.is_empty() {
+            groups.push(group);
+        }
+
+        let numbers: Vec<usize> = line_parts
+            .next()
+            .ok_or("Missing numbers in data!")?
+            .split(|c: char| !c.is_ascii_digit())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.parse::<usize>())
+            .collect::<Result<_, _>>()?;
+
+        println!("\nGroups: \n{:?}\nNumbers: \n{:?}", groups, numbers);
+
+        Ok((groups, numbers))
+    }
+
+    fn calculate_arrangements(
+        groups: Vec<TileGroup>,
+        numbers: Vec<usize>,
+    ) -> Result<u64, Box<dyn Error>> {
+        todo!();
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let mut result = 0;
+        for line in reader::get_lines(data_path)? {
+            let (groups, numbers) = process_line(&line)?;
+            println!("---");
+            result += calculate_arrangements(groups, numbers)?;
+        }
+
+        Ok(result)
     }
 }
 
