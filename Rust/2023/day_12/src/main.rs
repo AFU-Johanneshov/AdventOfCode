@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 21;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 7221;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 525152;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -158,6 +158,16 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+Part two actually requires the same calculation logic, but we need to do some work with the tiles
+before passing it to the calculation step.
+
+More precisely we need to expand the tiles and numbers by copying them 5 times. Basically once we
+have loaded the tiles and numbers, we copy the two Vec's 5 times and just add them together.
+
+Then after that we use the earlier logic to find our answer in our now much larger tile sets.
+
+This is very likely to require changes though as the potential arrangements will be massive
+compared to Part One.
 */
 mod part_two {
     use crate::reader;
