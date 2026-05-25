@@ -8,7 +8,7 @@ mod tests;
 #[allow(dead_code)]
 pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 21;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 7221;
 
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
@@ -57,54 +57,35 @@ will never affect the amount of unique arrangements.
 The question now is just how to find these "locked" groups of tiles.
 
 Another way could be to try and clear the unknowns and replace them with safe/broken tiles.
+
+For some reason I really struggled with planning a solution for this one. Seems like I was
+overcomplicating things as usual.
+I will be basing my solution on the work done by the reddit user "StaticMoose" in the following
+thread:
+https://www.reddit.com/r/adventofcode/comments/18hbbxe/2023_day_12python_stepbystep_tutorial_with_bonus/
+
+Solution presented by StaticMoose worked perfectly. I had to rewrite the code in rust which
+required some differences but the logic is the same.
 */
 mod part_one {
     use crate::reader;
     use std::error::Error;
 
-    #[derive(Debug, PartialEq)]
-    enum Tile {
-        Safe,
-        Broken,
-        Unknown,
-    }
+    const SAFE: u8 = 0;
+    const BROKEN: u8 = 1;
+    const UNKNOWN: u8 = 2;
 
-    impl Tile {
-        fn from_char(c: char) -> Result<Option<Tile>, Box<dyn Error>> {
-            Ok(match c {
-                '.' => None,
-                '#' => Some(Tile::Broken),
-                '?' => Some(Tile::Unknown),
-                _ => return Err(format!("Unexpected char {c} in data!").into()),
-            })
-        }
-    }
-
-    #[derive(Default, Debug)]
-    struct TileGroup {
-        tiles: Vec<Tile>,
-    }
-
-    impl TileGroup {}
-
-    fn process_line(data_line: &str) -> Result<(Vec<TileGroup>, Vec<usize>), Box<dyn Error>> {
-        let mut groups: Vec<TileGroup> = Vec::new();
-
+    fn parse_line(data_line: &str) -> Result<(Vec<u8>, Vec<usize>), Box<dyn Error>> {
         let mut line_parts = data_line.split(' ');
+        let mut tiles = Vec::new();
 
-        let mut group = TileGroup::default();
-        println!();
         for c in line_parts.next().unwrap().chars() {
-            print!("{}", c);
-            if let Some(tile) = Tile::from_char(c)? {
-                group.tiles.push(tile);
-            } else if !group.tiles.is_empty() {
-                groups.push(group);
-                group = TileGroup::default();
-            }
-        }
-        if !group.tiles.is_empty() {
-            groups.push(group);
+            tiles.push(match c {
+                '.' => SAFE,
+                '#' => BROKEN,
+                '?' => UNKNOWN,
+                _ => return Err(format!("Unexpected char {c} in data!").into()),
+            });
         }
 
         let numbers: Vec<usize> = line_parts
@@ -115,24 +96,54 @@ mod part_one {
             .map(|s| s.parse::<usize>())
             .collect::<Result<_, _>>()?;
 
-        println!("\nGroups: \n{:?}\nNumbers: \n{:?}", groups, numbers);
-
-        Ok((groups, numbers))
+        Ok((tiles, numbers))
     }
 
-    fn calculate_arrangements(
-        groups: Vec<TileGroup>,
-        numbers: Vec<usize>,
-    ) -> Result<u64, Box<dyn Error>> {
-        todo!();
+    fn handle_broken_tile(tiles: &[u8], numbers: &[usize]) -> Result<u64, Box<dyn Error>> {
+        // This method is only called when we know numbers contain at least
+        let group_len = numbers[0]; // 1 item, meaning this will never fail.
+
+        if tiles.len() < group_len || tiles.iter().take(group_len).any(|t| *t == SAFE) {
+            return Ok(0);
+        }
+
+        if tiles.len() == group_len {
+            return Ok((numbers.len() == 1) as u64);
+        }
+
+        if tiles[group_len] == BROKEN {
+            return Ok(0);
+        }
+
+        calculate_arrangements(&tiles[group_len + 1..], &numbers[1..])
+    }
+
+    fn handle_safe_tile(tiles: &[u8], numbers: &[usize]) -> Result<u64, Box<dyn Error>> {
+        calculate_arrangements(&tiles[1..], numbers)
+    }
+
+    fn calculate_arrangements(tiles: &[u8], numbers: &[usize]) -> Result<u64, Box<dyn Error>> {
+        if numbers.is_empty() {
+            return Ok(tiles.iter().all(|t| *t != BROKEN) as u64);
+        }
+
+        if tiles.is_empty() {
+            return Ok(0);
+        }
+
+        Ok(match tiles[0] {
+            BROKEN => handle_broken_tile(tiles, numbers)?,
+            SAFE => handle_safe_tile(tiles, numbers)?,
+            UNKNOWN => handle_broken_tile(tiles, numbers)? + handle_safe_tile(tiles, numbers)?,
+            _ => return Err(format!("Unepected tiletype {} in tiles slice!", tiles[0]).into()),
+        })
     }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
         let mut result = 0;
         for line in reader::get_lines(data_path)? {
-            let (groups, numbers) = process_line(&line)?;
-            println!("---");
-            result += calculate_arrangements(groups, numbers)?;
+            let (groups, numbers) = parse_line(&line)?;
+            result += calculate_arrangements(&groups, &numbers)?;
         }
 
         Ok(result)
