@@ -8,10 +8,10 @@ mod tests;
 #[allow(dead_code)]
 pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 2;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 25433;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 47;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -186,6 +186,58 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+Part two complicates things a lot.
+Now we will use the z axis as well.
+
+This time the goal is to figure out a start position and velocity of a new particle that will
+COLLIDE with each and every other particle. This means that the particle lines doesn't just need
+to intersect, but also match up time wise as well.
+
+Now, the interesting part is, I don't think that is actually important at first.
+Regardless of when the new particle collides with the others, they are all bound by their contant
+velocity. Meaning they are always travelling in a line. And what we need is to create a new line
+that intersects with ALL the other lines.
+But it gets better. Since we know a answer exists, we know that there HAS to be ONE line that
+intersects all of them. The full data has over 200 particles. Which means there are a lot of
+lines to check.
+But we don't actually need to check them all.
+With two lines the possible intersecting new line can be anywhere along one plane.
+But with three lines that is lowered to only ONE line that successfully intersects all three
+lines.
+
+So lets pick out 3 of the particles from the data that are not travelling in parallel.
+We can treat said particle lines as infinite lines since we know the intersection point has to
+be somewhere in the correct direction.
+We need two math formulas. One to figure out IF two 3d lines intersect. And one to figure out
+the closest distance between two 3d lines.
+Once we do we can find the correct line by doing this:
+
+for i in 0...
+    let startpoint = line1.position + i * line1.velocity
+    let lowest_distance = MAX_int.
+    for i2 in 0...
+        let endpoint = line2.position + i2 * line.velocity
+        let newline.velocity = endpoint - startpoint.
+        let newline.posiion = startpoint.position
+        if newline intersects with line3
+            return newline
+        else
+            let distance = newline closest distance to line3
+            if distance > lowest_distance
+                break
+            else
+                lowest_distance = distance
+
+Once the correct line has been found we need to figure out the correct start position.
+To do this we need to find the intersection point with all the remaining lines.
+Then find the lines with the intersection point that has the two fewest time steps.
+Then get the vector between the two intersection points of said lines.
+We then need to find the total steps between the two intersection points.
+Finally divide the vector between them by the amount of steps meant to be there to get the
+velocity of the new particle.
+To get the result subtract the velocity * the amount of time steps to the first intersection
+point from said intersection point. The position we get will be the start position of our new
+particle.
 */
 mod part_two {
     use crate::reader;
