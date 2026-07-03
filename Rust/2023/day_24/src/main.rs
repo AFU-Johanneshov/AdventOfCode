@@ -238,13 +238,228 @@ velocity of the new particle.
 To get the result subtract the velocity * the amount of time steps to the first intersection
 point from said intersection point. The position we get will be the start position of our new
 particle.
+
+Update:
+I started implementing these plans, but noticed an issue. I heavily underestimated the size
+of the values.
+
+I have tried a bunch of things but it seems like we might have to do something else. The
+values are just too big.
+
+We should try and analyze the data and make sure it isn't some kind of trick like day 12 2025.
+Start by checking the intersecting point of all the lines. We don't expect them to hit each
+other, but we should check just in case.
+I have a feeling the point we are looking for might be the start point of one of the particles
+in the data. Or at least along the path of one.
+Of course, that is just a feeling, and nothing points to it being true.
+
+All I know is that this problem seems way too difficult to be an AOC puzzle. Making me think
+there might be a hidden criteria the data follows that isn't visible in the example.
+Day 12 2025 was exactly that way. The puzzle and example made it appear as a extremely hard
+problem to solve, but when checking the actual data we got it was clear that the edge cases
+that brought that problem from "easy" to extremely hard never actually occured in the data.
+Meaning the puzzle and example showed the extremely hard problem, but only the easy solution
+was needed to solve it.
 */
 mod part_two {
     use crate::reader;
-    use std::error::Error;
+    use std::{
+        error::Error,
+        ops::{Add, Mul, Sub},
+    };
+
+    #[derive(Default, Debug, PartialEq, Clone, Copy)]
+    struct Vector3D {
+        x: i128,
+        y: i128,
+        z: i128,
+    }
+
+    impl Vector3D {
+        fn new(x: i128, y: i128, z: i128) -> Vector3D {
+            Self { x, y, z }
+        }
+
+        fn dot(&self, other: &Vector3D) -> i128 {
+            let dot = self.x as i128 * other.x as i128
+                + self.y as i128 * other.y as i128
+                + self.z as i128 * other.z as i128;
+            //println!("dot: {}", dot);
+            dot
+        }
+
+        fn cross(&self, other: &Vector3D) -> Vector3D {
+            todo!();
+        }
+    }
+
+    impl Add<Vector3D> for Vector3D {
+        type Output = Vector3D;
+        fn add(self, rhs: Vector3D) -> Self::Output {
+            Vector3D {
+                x: self.x + rhs.x,
+                y: self.y + rhs.y,
+                z: self.z + rhs.z,
+            }
+        }
+    }
+    impl Sub<Vector3D> for Vector3D {
+        type Output = Vector3D;
+        fn sub(self, rhs: Vector3D) -> Self::Output {
+            Vector3D {
+                x: self.x - rhs.x,
+                y: self.y - rhs.y,
+                z: self.z - rhs.z,
+            }
+        }
+    }
+    impl Mul<i128> for Vector3D {
+        type Output = Vector3D;
+        fn mul(self, rhs: i128) -> Self::Output {
+            Vector3D {
+                x: self.x * rhs,
+                y: self.y * rhs,
+                z: self.z * rhs,
+            }
+        }
+    }
+
+    #[derive(Default, Debug)]
+    struct Particle {
+        position: Vector3D,
+        velocity: Vector3D,
+    }
+
+    impl Particle {
+        fn new(position: Vector3D, velocity: Vector3D) -> Particle {
+            Self { position, velocity }
+        }
+        fn parse(particle_str: &str) -> Result<Particle, Box<dyn Error>> {
+            let values = particle_str
+                .split(|c: char| !c.is_ascii_digit() && c != '-')
+                .filter(|s| !s.is_empty())
+                .map(|s| s.parse::<i128>())
+                .collect::<Result<Vec<_>, _>>()?;
+            if values.len() != 6 {
+                return Err(format!(
+                    "Line: [{}] contained {} values instead of the expected 6!",
+                    particle_str,
+                    values.len()
+                )
+                .into());
+            }
+            Ok(Particle {
+                position: Vector3D::new(values[0], values[1], values[2]),
+                velocity: Vector3D::new(values[3], values[4], values[5]),
+            })
+        }
+
+        fn closest_distance_to(&self, other: &Particle) -> Option<f64> {
+            let diff = self.position - other.position;
+
+            let a = self.velocity.dot(&self.velocity);
+            let b = self.velocity.dot(&other.velocity);
+            let c = other.velocity.dot(&other.velocity);
+            let d = self.velocity.dot(&diff);
+            let e = other.velocity.dot(&diff);
+
+            let denom = a * c - b * b;
+            if denom == 0 {
+                return None;
+            }
+
+            let t = (b * e - c * d) / denom;
+            let s = (a as f64 * e as f64 - b as f64 * d as f64) as i128 / denom;
+            //println!("s: {s}");
+
+            let closest_a = self.position + self.velocity * t;
+            let closest_b = other.position + other.velocity * s;
+
+            let r = closest_a - closest_b;
+            Some(((r.x.pow(2) + r.y.pow(2) + r.z.pow(2)) as f64).sqrt()) // */
+        }
+
+        fn position_after(&self, time: i128) -> Vector3D {
+            self.position + self.velocity * time
+        }
+    }
+
+    /*
+
+    for i in 0...
+        let startpoint = line1.position + i * line1.velocity
+        let lowest_distance = MAX_int.
+        for i2 in 0...
+            let endpoint = line2.position + i2 * line.velocity
+            let newline.velocity = endpoint - startpoint.
+            let newline.posiion = startpoint.position
+            if newline intersects with line3
+                return newline
+            else
+                let distance = newline closest distance to line3
+                if distance > lowest_distance
+                    break
+                else
+                    lowest_distance = distance
+
+    */
+
+    fn get_connecting_line(
+        line1: &Particle,
+        line2: &Particle,
+        line3: &Particle,
+    ) -> Result<Particle, Box<dyn Error>> {
+        let mut i = 0;
+        let mut c = f64::MAX;
+        loop {
+            let startpoint = line1.position_after(i);
+            let mut lowest_distance = f64::MAX;
+            let mut i2 = 1273196186888;
+            loop {
+                let endpoint = line2.position_after(i2);
+                let newline = Particle::new(startpoint, endpoint - startpoint);
+                /*
+                println!(
+                    "Startpoint: {:?}\nEndpoint: {:?}\nDirection: {:?}",
+                    startpoint, endpoint, newline.velocity
+                ); // */
+                if let Some(distance) = newline.closest_distance_to(line3) {
+                    //println!("{}", distance);
+                    if distance < c {
+                        c = distance;
+                        //println!("New shortest: {}", c);
+                    } // */
+                    if distance == 0.0 {
+                        return Ok(newline);
+                    } else if distance > lowest_distance {
+                        println!(
+                            "Passed closest point at a distance of: {}\nwith line1[{}] and line2[{}]\nC: {}",
+                            lowest_distance, i, i2, c
+                        );
+                        if c > 100000000.0 {
+                            //i += c as i128;
+                            i += 100000;
+                        }
+                        break;
+                    } else {
+                        if distance > 10000.0 {
+                            i2 += 10000;
+                        }
+                        lowest_distance = distance;
+                    }
+                }
+                i2 += 1;
+            }
+            i += 1;
+        }
+    }
 
     pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+        let particles = reader::get_lines(data_path)?
+            .map(|line| Particle::parse(&line))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        get_connecting_line(&particles[0], &particles[1], &particles[2])?;
 
         Err("NotImplemented: This problem has not been solved yet!".into())
     }
