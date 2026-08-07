@@ -269,6 +269,50 @@ mod part_two {
     };
 
     #[derive(Default, Debug, PartialEq, Clone, Copy)]
+    struct F64Vector3D {
+        x: f64,
+        y: f64,
+        z: f64,
+    }
+    impl F64Vector3D {
+        fn dot(&self, other: &F64Vector3D) -> f64 {
+            let dot = self.x * other.x + self.y * other.y + self.z * other.z;
+            //println!("dot: {}", dot);
+            dot
+        }
+    }
+    impl Add<F64Vector3D> for F64Vector3D {
+        type Output = F64Vector3D;
+        fn add(self, rhs: F64Vector3D) -> Self::Output {
+            F64Vector3D {
+                x: self.x + rhs.x,
+                y: self.y + rhs.y,
+                z: self.z + rhs.z,
+            }
+        }
+    }
+    impl Sub<F64Vector3D> for F64Vector3D {
+        type Output = F64Vector3D;
+        fn sub(self, rhs: F64Vector3D) -> Self::Output {
+            F64Vector3D {
+                x: self.x - rhs.x,
+                y: self.y - rhs.y,
+                z: self.z - rhs.z,
+            }
+        }
+    }
+    impl Mul<f64> for F64Vector3D {
+        type Output = F64Vector3D;
+        fn mul(self, rhs: f64) -> Self::Output {
+            F64Vector3D {
+                x: self.x * rhs,
+                y: self.y * rhs,
+                z: self.z * rhs,
+            }
+        }
+    }
+
+    #[derive(Default, Debug, PartialEq, Clone, Copy)]
     struct Vector3D {
         x: i128,
         y: i128,
@@ -281,11 +325,17 @@ mod part_two {
         }
 
         fn dot(&self, other: &Vector3D) -> i128 {
-            let dot = self.x as i128 * other.x as i128
-                + self.y as i128 * other.y as i128
-                + self.z as i128 * other.z as i128;
+            let dot = self.x * other.x + self.y * other.y + self.z * other.z;
             //println!("dot: {}", dot);
             dot
+        }
+
+        fn to_f64_vector(&self) -> F64Vector3D {
+            F64Vector3D {
+                x: self.x as f64,
+                y: self.y as f64,
+                z: self.z as f64,
+            }
         }
 
         fn cross(&self, other: &Vector3D) -> Vector3D {
@@ -323,6 +373,16 @@ mod part_two {
             }
         }
     }
+    impl Mul<f64> for Vector3D {
+        type Output = Vector3D;
+        fn mul(self, rhs: f64) -> Self::Output {
+            Vector3D {
+                x: (self.x as f64 * rhs) as i128,
+                y: (self.y as f64 * rhs) as i128,
+                z: (self.z as f64 * rhs) as i128,
+            }
+        }
+    }
 
     #[derive(Default, Debug)]
     struct Particle {
@@ -355,28 +415,54 @@ mod part_two {
         }
 
         fn closest_distance_to(&self, other: &Particle) -> Option<f64> {
-            let diff = self.position - other.position;
+            let diff = (self.position - other.position).to_f64_vector();
 
+            let p1 = self.position.to_f64_vector();
+            let v1 = self.velocity.to_f64_vector();
+
+            let p2 = other.position.to_f64_vector();
+            let v2 = other.velocity.to_f64_vector();
+
+            /*
             let a = self.velocity.dot(&self.velocity);
             let b = self.velocity.dot(&other.velocity);
             let c = other.velocity.dot(&other.velocity);
             let d = self.velocity.dot(&diff);
             let e = other.velocity.dot(&diff);
+            // */
 
+            let a = v1.dot(&v1);
+            let b = v1.dot(&v2);
+            let c = v2.dot(&v2);
+            let d = v1.dot(&diff);
+            let e = v2.dot(&diff);
+
+            /*
             let denom = a * c - b * b;
             if denom == 0 {
                 return None;
+            }*/
+
+            let denom = a * c - b * b;
+            if 0.1 > denom && denom > -0.1 {
+                return None;
             }
 
-            let t = (b * e - c * d) / denom;
-            let s = (a as f64 * e as f64 - b as f64 * d as f64) as i128 / denom;
+            let t = (b * e - c * d) as f64 / denom as f64;
+            let s = (a * e - b * d) as f64 / denom as f64;
             //println!("s: {s}");
 
+            /*
             let closest_a = self.position + self.velocity * t;
             let closest_b = other.position + other.velocity * s;
+            */
+
+            let closest_a = p1 + (v1 * t);
+            let closest_b = p2 + (v2 * s);
 
             let r = closest_a - closest_b;
-            Some(((r.x.pow(2) + r.y.pow(2) + r.z.pow(2)) as f64).sqrt()) // */
+            Some((r.x.powf(2.0) + r.y.powf(2.0) + r.z.powf(2.0)).sqrt())
+            //Some(((r.x.pow(2) + r.y.pow(2) + r.z.pow(2)) as f64).sqrt()) // */
         }
 
         fn position_after(&self, time: i128) -> Vector3D {
@@ -409,12 +495,13 @@ mod part_two {
         line2: &Particle,
         line3: &Particle,
     ) -> Result<Particle, Box<dyn Error>> {
-        let mut i = 0;
+        let mut i = 4000;
         let mut c = f64::MAX;
         loop {
             let startpoint = line1.position_after(i);
             let mut lowest_distance = f64::MAX;
-            let mut i2 = 1273196186888;
+            let mut i2 = i; //1273196186888;
+            let mut i2 = 392415090000; //1273196186888;
             loop {
                 let endpoint = line2.position_after(i2);
                 let newline = Particle::new(startpoint, endpoint - startpoint);
@@ -430,21 +517,28 @@ mod part_two {
                         //println!("New shortest: {}", c);
                     } // */
                     if distance == 0.0 {
+                        println!("Found connecting line!");
+                        println!("newline pos: {:?}", newline.position);
+                        println!("newline vel: {:?}", newline.velocity);
                         return Ok(newline);
                     } else if distance > lowest_distance {
                         println!(
                             "Passed closest point at a distance of: {}\nwith line1[{}] and line2[{}]\nC: {}",
                             lowest_distance, i, i2, c
                         );
-                        if c > 100000000.0 {
+
+                        println!("newline pos: {:?}", newline.position);
+                        println!("newline vel: {:?}", newline.velocity);
+
+                        if c > 10000.0 {
                             //i += c as i128;
-                            i += 100000;
-                        }
+                            i += 100;
+                        } // */
                         break;
                     } else {
                         if distance > 10000.0 {
                             i2 += 10000;
-                        }
+                        } // */
                         lowest_distance = distance;
                     }
                 }
@@ -459,7 +553,70 @@ mod part_two {
             .map(|line| Particle::parse(&line))
             .collect::<Result<Vec<_>, _>>()?;
 
-        get_connecting_line(&particles[0], &particles[1], &particles[2])?;
+        let mut link = Particle::new(
+            particles[0].position,
+            particles[0].position - particles[1].position,
+        );
+
+        let newline = Particle::new(
+            Vector3D {
+                x: 347900056116335,
+                y: 153201919784951,
+                z: 326681280941887,
+            },
+            Vector3D {
+                x: -57589298833377,
+                y: 174645336898139,
+                z: 50955022631101,
+            },
+        );
+
+        let newline = Particle::new(
+            Vector3D {
+                x: 347900052479899,
+                y: 153201931689133,
+                z: 326681276790861,
+            },
+            Vector3D {
+                x: -57589295012981,
+                y: 174645325363921,
+                z: 50955027021275,
+            },
+        );
+
+        println!("{:?}", link);
+        link.position.x += 1;
+
+        println!("{:?}", link);
+
+        if let Some(distance) = newline.closest_distance_to(&particles[1]) {
+            println!("Distance: {distance}");
+        }
+
+        let mut c = f64::MAX;
+        for i in 0..particles.len() {
+            if let Some(distance) = newline.closest_distance_to(&particles[i]) {
+                println!("Distance: {distance}");
+            }
+
+            for i2 in i + 1..particles.len() {
+                if let Some(distance) = particles[i].closest_distance_to(&particles[i2]) {
+                    if distance < c {
+                        //println!("New closest_distance is between line {} and line {} at a distance of {}", i, i2, distance);
+                        c = distance;
+                    }
+                    /*
+                    if distance < 10000000000.0 {
+                        //println!("Line {i} passes line {i2} at a distance of {distance}");
+                    }*/
+                } else {
+                    //println!("Line {i} and line {i2} is parallel!");
+                }
+            }
+        } // */
+        println!("Done!");
+
+        //get_connecting_line(&particles[0], &particles[1], &particles[2])?;
 
         Err("NotImplemented: This problem has not been solved yet!".into())
     }
