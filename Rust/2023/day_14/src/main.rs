@@ -138,10 +138,187 @@ mod part_two {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    #[derive(Copy, Clone, PartialEq)]
+    enum Tile {
+        Empty,
+        Stationary,
+        Movable,
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    struct Grid {
+        grid: [[Tile; 100]; 100],
+        size: usize,
+    }
+
+    impl Grid {
+        fn out_of_bounds(&self, x: i8, y: i8) -> bool {
+            x < 0 || x >= self.size as i8 || y < 0 || y >= self.size as i8
+        }
+
+        fn identifier(&self) -> [u128; 100] {
+            let mut identifier = [0; 100];
+            for (y, row) in self.grid.iter().enumerate() {
+                let mut result = 0;
+                for (i, tile) in row.iter().enumerate() {
+                    let bit = match tile {
+                        Tile::Empty => 0,
+                        _ => 1,
+                    };
+                    result += (bit as u128) << i;
+                }
+                identifier[y] = result;
+            }
+            identifier
+        }
+    }
+
+    struct Direction {
+        x: i8,
+        y: i8,
+    }
+
+    impl Default for Direction {
+        fn default() -> Self {
+            Direction { x: 0, y: -1 }
+        }
+    }
+
+    impl Direction {
+        fn next(self) -> Direction {
+            match (self.x, self.y) {
+                (0, -1) => Direction { x: -1, y: 0 },
+                (-1, 0) => Direction { x: 0, y: 1 },
+                (0, 1) => Direction { x: 1, y: 0 },
+                (1, 0) => Direction { x: 0, y: -1 },
+                _ => panic!("This can only occur if the universe demand it."),
+            }
+        }
+
+        fn vector(&self) -> (i8, i8) {
+            (self.x, self.y)
+        }
+
+        fn is_vertical(&self) -> bool {
+            self.y != 0
+        }
+
+        fn is_negative(&self) -> bool {
+            self.x == -1 || self.y == -1
+        }
+    }
+
+    fn get_grid(data_path: &str) -> Result<Grid, Box<dyn Error>> {
+        let mut grid = [[Tile::Empty; 100]; 100];
+        let mut size = 0;
+        for (y, line) in reader::get_lines(data_path)?.enumerate() {
+            for (x, c) in line.chars().enumerate() {
+                grid[y][x] = match c {
+                    '.' => Tile::Empty,
+                    '#' => Tile::Stationary,
+                    'O' => Tile::Movable,
+                    _ => return Err(format!("Found unexpected char [{}] in data file!", c).into()),
+                }
+            }
+            size = y + 1;
+        }
+        Ok(Grid { grid, size })
+    }
+
+    fn try_move_tile(grid: &mut Grid, mut x: usize, mut y: usize, direction: &Direction) {
+        if grid.grid[y][x] != Tile::Movable {
+            return;
+        }
+
+        grid.grid[y][x] = Tile::Empty;
+        let (d_x, d_y) = direction.vector();
+
+        loop {
+            let (n_x, n_y) = (x as i8 + d_x, y as i8 + d_y);
+            if grid.out_of_bounds(n_x, n_y) || grid.grid[n_y as usize][n_x as usize] != Tile::Empty
+            {
+                break;
+            } else {
+                x = n_x as usize;
+                y = n_y as usize;
+            }
+        }
+        grid.grid[y][x] = Tile::Movable;
+    }
+
+    fn tilt(grid: &mut Grid, direction: &Direction) {
+        let scan_range: Box<dyn Iterator<Item = _>> = if direction.is_negative() {
+            Box::new(0..grid.size)
+        } else {
+            Box::new((0..grid.size).rev())
+        };
+        if direction.is_vertical() {
+            for y in scan_range {
+                for x in 0..grid.size {
+                    try_move_tile(grid, x, y, direction);
+                }
+            }
+        } else {
+            for x in scan_range {
+                for y in 0..grid.size {
+                    try_move_tile(grid, x, y, direction);
+                }
+            }
+        }
+    }
+
+    fn rotate(grid: &mut Grid) {
+        let mut direction = Direction::default();
+        for _ in 0..4 {
+            tilt(grid, &direction);
+            direction = direction.next();
+        }
+    }
+
+    fn is_identical(ident1: [u128; 100], ident2: [u128; 100]) -> bool {
+        ident1.iter().zip(ident2).any(|(a, b)| *a != b)
+    }
+
+    fn process_grid(mut grid: Grid) -> u64 {
+        let mut identifier = [0; 100];
+        for i in 0..1000000000 {
+            rotate(&mut grid);
+            let new_ident = grid.identifier();
+            if is_identical(identifier, new_ident) {
+                panic!("Found identical after {i} rotations!");
+            }
+            println!("Calculated {i}th rotation!");
+            identifier = new_ident;
+        }
+
+        println!("size: {}", grid.size);
+        let mut result = 0;
+        /*
+        for y in 0..grid.size {
+            for x in 0..grid.size {
+                if grid.grid[y][x] == Tile::Movable {
+                    //result += move_up(&mut grid, x, y);
+                }
+            }
+        } */
+
+        for row in grid.grid {
+            for tile in row {
+                let c = match tile {
+                    Tile::Empty => '.',
+                    Tile::Stationary => '#',
+                    Tile::Movable => 'O',
+                };
+                print!("{c}");
+            }
+            println!();
+        }
+
+        result
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let grid = get_grid(data_path)?;
+        Ok(process_grid(grid))
     }
 }
 
