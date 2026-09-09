@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 136;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 110677;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 64;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -114,6 +114,25 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+Part two requires that we do similar calculations, but this time not just up but the other three
+directions as well.
+Basically, we are meant to "rotate" the grid 4 times to see where the blocks end up. Then do the
+same math to get the result as Part One.
+
+The problem here is that we are not just going to rotate it once, but rather 1 000 000 000 times.
+Now, I am fairly sure that calculating all 1 billion rotations would take too long. So we need to
+figure out some way to reduce how many calculations are made.
+
+Regardless, first we need to use the Part One code, but change the move_up function to take in a
+direction to move instead.
+Once we have that we focus on correctly doing one full rotation.
+
+After that we can start looking into ways to reach 1 billion rotations.
+
+My first question is, will the rotations eventually fall into a pattern where each rotation
+results in the same layout as the start of the rotations?
+If that is the case then we should be able to just return once we find that the layout between
+two rotations haven't changed.
 */
 mod part_two {
     use crate::reader;
