@@ -8,7 +8,7 @@ mod tests;
 #[allow(dead_code)]
 pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 136;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 110677;
 
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
@@ -44,10 +44,65 @@ mod part_one {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
-        let lines = reader::get_lines(data_path)?;
+    #[derive(Copy, Clone, PartialEq)]
+    enum Tile {
+        Empty,
+        Stationary,
+        Movable,
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    struct Grid {
+        grid: [[Tile; 100]; 100],
+        size: usize,
+    }
+
+    fn get_grid(data_path: &str) -> Result<Grid, Box<dyn Error>> {
+        let mut grid = [[Tile::Empty; 100]; 100];
+        let mut size = 0;
+        for (y, line) in reader::get_lines(data_path)?.enumerate() {
+            for (x, c) in line.chars().enumerate() {
+                grid[y][x] = match c {
+                    '.' => Tile::Empty,
+                    '#' => Tile::Stationary,
+                    'O' => Tile::Movable,
+                    _ => return Err(format!("Found unexpected char [{}] in data file!", c).into()),
+                }
+            }
+            size = y + 1;
+        }
+        Ok(Grid { grid, size })
+    }
+
+    fn move_up(grid: &mut Grid, x: usize, mut y: usize) -> u64 {
+        grid.grid[y][x] = Tile::Empty;
+        loop {
+            if y == 0 || grid.grid[y - 1][x] != Tile::Empty {
+                break;
+            } else {
+                y -= 1
+            }
+        }
+        grid.grid[y][x] = Tile::Movable;
+        (grid.size - y) as u64
+    }
+
+    fn process_grid(mut grid: Grid) -> u64 {
+        println!("size: {}", grid.size);
+        let mut result = 0;
+        for y in 0..grid.size {
+            for x in 0..grid.size {
+                if grid.grid[y][x] == Tile::Movable {
+                    result += move_up(&mut grid, x, y);
+                }
+            }
+        }
+
+        result
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+        let grid = get_grid(data_path)?;
+        Ok(process_grid(grid))
     }
 }
 
