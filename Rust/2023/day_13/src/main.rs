@@ -114,7 +114,10 @@ mod part_one {
         }
 
         for i in 0..len - 1 {
-            if values[len - 1] == values[i] && (len - i) % 2 == 0 && is_mirrored(&values[i..len]) {
+            if values[len - 1] == values[i]
+                && (len - i).is_multiple_of(2)
+                && is_mirrored(&values[i..len])
+            {
                 return Some((len - ((len - i) / 2)) as u64);
             }
         }
@@ -290,7 +293,7 @@ mod part_two {
             }
         }
         for i in 0..len - 1 {
-            if (len - i) % 2 == 0 {
+            if (len - i).is_multiple_of(2) {
                 if values[len - 1] == values[i] {
                     if is_mirrored(&values[i..len], false) {
                         return Some((len - ((len - i) / 2)) as u64);
