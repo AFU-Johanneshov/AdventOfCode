@@ -44,6 +44,8 @@ mod part_one {
     use crate::reader;
     use std::error::Error;
 
+    type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
     #[derive(Copy, Clone, PartialEq)]
     enum Tile {
         Empty,
@@ -56,7 +58,7 @@ mod part_one {
         size: usize,
     }
 
-    fn get_grid(data_path: &str) -> Result<Grid, Box<dyn Error>> {
+    fn get_grid(data_path: &str) -> Result<Grid> {
         let mut grid = [[Tile::Empty; 100]; 100];
         let mut size = 0;
         for (y, line) in reader::get_lines(data_path)?.enumerate() {
@@ -100,7 +102,7 @@ mod part_one {
         result
     }
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+    pub fn calculate(data_path: &str) -> Result<u64> {
         let grid = get_grid(data_path)?;
         Ok(process_grid(grid))
     }
@@ -165,8 +167,10 @@ mod part_two {
         size: usize,
     }
 
+    type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
     impl Grid {
-        fn from_data_file(data_path: &str) -> Result<Grid, Box<dyn Error>> {
+        fn from_data_file(data_path: &str) -> Result<Grid> {
             let mut grid = [[Tile::Empty; 100]; 100];
             let mut size = 0;
             for (y, line) in reader::get_lines(data_path)?.enumerate() {
@@ -326,7 +330,7 @@ mod part_two {
         grid.score()
     }
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+    pub fn calculate(data_path: &str) -> Result<u64> {
         let grid = Grid::from_data_file(data_path)?;
         Ok(process_grid(grid))
     }
