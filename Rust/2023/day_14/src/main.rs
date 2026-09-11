@@ -133,10 +133,25 @@ My first question is, will the rotations eventually fall into a pattern where ea
 results in the same layout as the start of the rotations?
 If that is the case then we should be able to just return once we find that the layout between
 two rotations haven't changed.
+
+Update:
+It seems like I was partially correct. The grid doesn't end in a state where any rotation results
+in the same state. But it seems like after a few rotations only a few tiles keep changing.
+
+So what I am thinking is that we keep a dictionary of the identifiers and the rotation nr it was
+found at. Once the same identifier is found again we know we have found a loop.
+When a loop is found we should be able to use the start index and length of the loop to calculate
+which index in the loop would line up with exactly 1000000000.
+
+I am thinking once a loop is found we do first subtract 1000000000 with the start index of the
+loop.
+Then simply do "remaining % loop_length". The value we get out should be the index in the loop
+that lines up with 1000000000. So then we just need to rotate the grid that many times again to
+get the grid that should appear at 1000000000.
 */
 mod part_two {
     use crate::reader;
-    use std::error::Error;
+    use std::{error::Error, thread, time::Duration};
 
     #[derive(Copy, Clone, PartialEq)]
     enum Tile {
@@ -275,7 +290,30 @@ mod part_two {
     }
 
     fn is_identical(ident1: [u128; 100], ident2: [u128; 100]) -> bool {
-        ident1.iter().zip(ident2).any(|(a, b)| *a != b)
+        !ident1.iter().zip(ident2).any(|(a, b)| *a != b)
+    }
+
+    fn print_ident(ident: [u128; 100]) {
+        println!("");
+        for v in ident {
+            print!("{v}");
+        }
+        println!();
+    }
+
+    fn print_grid(grid: &Grid) {
+        println!();
+        for row in grid.grid {
+            for tile in row {
+                let c = match tile {
+                    Tile::Empty => '.',
+                    Tile::Stationary => '#',
+                    Tile::Movable => 'O',
+                };
+                print!("{c}");
+            }
+            println!();
+        }
     }
 
     fn process_grid(mut grid: Grid) -> u64 {
@@ -284,10 +322,13 @@ mod part_two {
             rotate(&mut grid);
             let new_ident = grid.identifier();
             if is_identical(identifier, new_ident) {
+                println!("Ident: {:?}\nNew_Ident: {:?}", identifier, new_ident);
                 panic!("Found identical after {i} rotations!");
             }
-            println!("Calculated {i}th rotation!");
+            //print_ident(new_ident);
+            print_grid(&grid);
             identifier = new_ident;
+            thread::sleep(Duration::from_millis(100));
         }
 
         println!("size: {}", grid.size);
@@ -300,18 +341,6 @@ mod part_two {
                 }
             }
         } */
-
-        for row in grid.grid {
-            for tile in row {
-                let c = match tile {
-                    Tile::Empty => '.',
-                    Tile::Stationary => '#',
-                    Tile::Movable => 'O',
-                };
-                print!("{c}");
-            }
-            println!();
-        }
 
         result
     }
