@@ -1,0 +1,98 @@
+#[macro_use]
+mod macros;
+mod reader;
+
+#[cfg(test)]
+mod tests;
+
+#[allow(dead_code)]
+pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 1320;
+#[allow(dead_code)]
+pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+
+#[allow(dead_code)]
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+#[allow(dead_code)]
+pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+
+//
+
+//
+
+/*
+Part One
+##################################################################################################
+
+This seems like a fairly simple problem. Read the data line, then for each section do the
+following and sum the results:
+
+Split the string at '=' or '-'
+Have a mutable integer "r".
+Then for each character in the first part of the split string:
+    Increase "r" by the ascii code for the character.
+    Set "r" to "r" multiplied by 17
+    Set "r" to the remainder of dividing "r" by 256. (4 % 256)
+When all characters have been processed return "r" as the section result.
+*/
+mod part_one {
+    use crate::reader;
+    use std::error::Error;
+
+    type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+    pub fn calculate(data_path: &str) -> Result<u64> {
+        let lines = reader::get_lines(data_path)?;
+
+        Err("NotImplemented: This problem has not been solved yet!".into())
+    }
+}
+
+//
+
+//
+
+/*
+Part Two
+##################################################################################################
+
+*/
+mod part_two {
+    use crate::reader;
+    use std::error::Error;
+
+    type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+    pub fn calculate(data_path: &str) -> Result<u64> {
+        let lines = reader::get_lines(data_path)?;
+
+        Err("NotImplemented: This problem has not been solved yet!".into())
+    }
+}
+
+//
+
+//
+
+// Default controller code. Is the same between projects.
+// ###############################################################################################
+
+fn main() {
+    println!("Running Program...");
+
+    if cfg!(feature = "bench") {
+        println!("Benchmarks are enabled!\n");
+    }
+
+    println!("\nPart One {}\n", {
+        match benchmark!("calculate", { part_one::calculate("data.txt") }) {
+            Ok(value) => format!("Result:\n{}", value),
+            Err(err) => format!("FAILED with error:\n{}", err),
+        }
+    });
+    println!("\nPart Two {}\n", {
+        match benchmark!("calculate", { part_two::calculate("data.txt") }) {
+            Ok(value) => format!("Result:\n{}", value),
+            Err(err) => format!("FAILED with error:\n{}", err),
+        }
+    });
+}
