@@ -28,7 +28,9 @@ mod part_one {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+    type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+    pub fn calculate(data_path: &str) -> Result<u64> {
         let lines = reader::get_lines(data_path)?;
 
         Err("NotImplemented: This problem has not been solved yet!".into())
@@ -48,7 +50,9 @@ mod part_two {
     use crate::reader;
     use std::error::Error;
 
-    pub fn calculate(data_path: &str) -> Result<u64, Box<dyn Error>> {
+    type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+    pub fn calculate(data_path: &str) -> Result<u64> {
         let lines = reader::get_lines(data_path)?;
 
         Err("NotImplemented: This problem has not been solved yet!".into())
