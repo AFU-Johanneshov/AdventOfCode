@@ -89,7 +89,6 @@ mod part_one {
     }
 
     fn process_grid(mut grid: Grid) -> u64 {
-        println!("size: {}", grid.size);
         let mut result = 0;
         for y in 0..grid.size {
             for x in 0..grid.size {
@@ -153,7 +152,7 @@ get the grid that should appear at 1000000000.
 */
 mod part_two {
     use crate::reader;
-    use std::{collections::HashMap, error::Error};
+    use std::error::Error;
 
     #[derive(Copy, Clone, PartialEq)]
     enum Tile {
@@ -311,22 +310,31 @@ mod part_two {
     }
 
     fn process_grid(mut grid: Grid) -> u64 {
-        let mut identifiers: HashMap<[u128; 100], usize> = HashMap::new();
-        for i in 1..1000000000 {
-            grid.rotate();
-
-            if let Some(start_index) = identifiers.insert(grid.identifier(), i) {
-                let loop_length = i - start_index;
-                let target_index = 1000000000 - start_index;
-                let loop_index = target_index % loop_length;
-
-                for _ in 0..loop_index {
+        let mut identifiers: std::collections::HashMap<[u128; 100], usize> =
+            std::collections::HashMap::new();
+        group_benchmark!(process_grid, {
+            for i in 1..1000000000 {
+                benchmark_multiple!(process_grid, "rotate", {
                     grid.rotate();
+                });
+
+                let op = benchmark_multiple!(process_grid, "hashMap_lookup", {
+                    identifiers.insert(grid.identifier(), i)
+                });
+                if let Some(start_index) = op {
+                    benchmark_multiple!(process_grid, "rotate_remaining", {
+                        let loop_length = i - start_index;
+                        let target_index = 1000000000 - start_index;
+                        let loop_index = target_index % loop_length;
+
+                        for _ in 0..loop_index {
+                            grid.rotate();
+                        }
+                    });
+                    break;
                 }
-                return grid.score();
             }
-        }
-        println!("No repeating pattern was found.\nHow long did this take to calculate?");
+        });
         grid.score()
     }
 
