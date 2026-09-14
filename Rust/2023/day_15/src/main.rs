@@ -8,7 +8,7 @@ mod tests;
 #[allow(dead_code)]
 pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 1320;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 498538;
 
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
@@ -41,9 +41,12 @@ mod part_one {
     type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
     pub fn calculate(data_path: &str) -> Result<u64> {
-        let lines = reader::get_lines(data_path)?;
-
-        Err("NotImplemented: This problem has not been solved yet!".into())
+        Ok(reader::get_lines(data_path)?
+            .next()
+            .ok_or("Data file was empty!")?
+            .split(',')
+            .map(|s| s.chars().fold(0, |r, c| ((r + c as u64) * 17) % 256))
+            .sum())
     }
 }
 
