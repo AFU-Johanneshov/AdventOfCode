@@ -11,7 +11,7 @@ pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 1320;
 pub const PART_ONE_EXPECTED_VALUE: u64 = 498538;
 
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 145;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
 
@@ -58,6 +58,39 @@ mod part_one {
 Part Two
 ##################################################################################################
 
+This is a lot more complex than part one.
+
+We need to start by again spliting the input string at each ',' to get each step.
+But now we also need to get the label, operator and possible focal length number.
+This time I feel a manual string scan might be better than to use split.
+We basically iterate through the characters, and when we find a '=' or '-' we save the index range
+before it as the label.
+
+Next we want to run the hash algorithm from Part One on the label to get the box id for this step.
+
+Then depending on which operator we found we do the following:
+'-': Go to the box with the id we received from the hash algortihm.
+     If the box contains a lens with the correct label then remove it, moving any lenses after it
+     forward to fill the empty space.
+
+'=': Get the last character in the step, which should be a 1 letter integer.
+     This is the focal length.
+     Once we have the focal length go to the box with the id we got from the hash algorithm.
+     Check the lenses in the box, if we find a lens with a matching label then set its focal
+     length to the one we got from this step.
+     If no match is found then add a new lens with the label and focal length specified in the
+     current step to the end of the lens list of the box.
+
+When we have processed all steps we need to calculate and add together the focusing power of all
+the lenses.
+
+To calculate the focusing power of a lens we do the following:
+Multiply
+    (The box the lens is in + 1) *
+    (The index of the lens in the lens list + 1) *
+    The focal length of the lens.
+
+Once we add all the focusing powers together we have our result.
 */
 mod part_two {
     use crate::reader;
