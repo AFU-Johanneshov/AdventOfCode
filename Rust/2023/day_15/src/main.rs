@@ -13,7 +13,7 @@ pub const PART_ONE_EXPECTED_VALUE: u64 = 498538;
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 145;
 #[allow(dead_code)]
-pub const PART_TWO_EXPECTED_VALUE: u64 = 0;
+pub const PART_TWO_EXPECTED_VALUE: u64 = 286278;
 
 //
 
@@ -98,10 +98,77 @@ mod part_two {
 
     type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-    pub fn calculate(data_path: &str) -> Result<u64> {
-        let lines = reader::get_lines(data_path)?;
+    struct Lens {
+        label: String,
+        focal_length: u8,
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    fn hash_algorithm(input: &str) -> usize {
+        input.chars().fold(0, |r, c| ((r + c as usize) * 17) % 256)
+    }
+
+    fn remove_lens(box_array: &mut [Vec<Lens>; 256], label: &str) {
+        let box_id = hash_algorithm(label);
+        for i in 0..box_array[box_id].len() {
+            if box_array[box_id][i].label == label {
+                box_array[box_id].remove(i);
+                return;
+            }
+        }
+    }
+
+    fn set_lens(box_array: &mut [Vec<Lens>; 256], label: &str, focal_length: char) {
+        let box_id = hash_algorithm(label);
+        for i in 0..box_array[box_id].len() {
+            if box_array[box_id][i].label == label {
+                box_array[box_id][i].focal_length = focal_length as u8 - 48;
+                return;
+            }
+        }
+        box_array[box_id].push(Lens {
+            label: label.to_string(),
+            focal_length: focal_length as u8 - 48,
+        });
+    }
+
+    fn process_steps<'a>(steps: impl Iterator<Item = &'a str>) -> Result<[Vec<Lens>; 256]> {
+        let mut box_array = [const { Vec::new() }; 256];
+
+        for step in steps {
+            for (i, c) in step.char_indices() {
+                if c == '-' {
+                    remove_lens(&mut box_array, &step[0..i]);
+                    break;
+                } else if c == '=' {
+                    // For this to run step.chars() can't be empty. So unwrap will never fail.
+                    set_lens(&mut box_array, &step[0..i], step.chars().last().unwrap());
+                    break;
+                }
+            }
+        }
+
+        Ok(box_array)
+    }
+
+    fn calculate_focus_power(box_array: [Vec<Lens>; 256]) -> u64 {
+        let mut total = 0;
+        for (box_id, lens_box) in box_array.iter().enumerate() {
+            for (lens_index, lens) in lens_box.iter().enumerate() {
+                total += (box_id as u64 + 1) * (lens_index as u64 + 1) * lens.focal_length as u64;
+            }
+        }
+        total
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64> {
+        let line = reader::get_lines(data_path)?
+            .next()
+            .ok_or("The data file is empty!")?;
+        let steps = line.split(',');
+
+        let box_array = process_steps(steps)?;
+
+        Ok(calculate_focus_power(box_array))
     }
 }
 
