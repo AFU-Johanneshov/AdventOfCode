@@ -8,7 +8,7 @@ mod tests;
 #[allow(dead_code)]
 pub const PART_ONE_EXPECTED_TEST_VALUE: u64 = 46;
 #[allow(dead_code)]
-pub const PART_ONE_EXPECTED_VALUE: u64 = 0; //6978;
+pub const PART_ONE_EXPECTED_VALUE: u64 = 6978;
 
 #[allow(dead_code)]
 pub const PART_TWO_EXPECTED_TEST_VALUE: u64 = 0;
@@ -60,10 +60,217 @@ mod part_one {
 
     type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
-    pub fn calculate(data_path: &str) -> Result<u64> {
-        let lines = reader::get_lines(data_path)?;
+    struct Vector {
+        x: i16,
+        y: i16,
+    }
 
-        Err("NotImplemented: This problem has not been solved yet!".into())
+    #[derive(Clone, Copy)]
+    enum Direction {
+        North = 0,
+        East = 1,
+        South = 2,
+        West = 3,
+    }
+
+    impl Direction {
+        fn as_vector(&self) -> Vector {
+            match self {
+                Self::North => Vector { x: 0, y: -1 },
+                Self::East => Vector { x: 1, y: 0 },
+                Self::South => Vector { x: 0, y: 1 },
+                Self::West => Vector { x: -1, y: 0 },
+            }
+        }
+    }
+
+    struct Beam {
+        position: Vector,
+        direction: Direction,
+        id: u16,
+    }
+
+    impl Beam {
+        fn next(&self, direction: Direction) -> Beam {
+            let dir = direction.as_vector();
+            Beam {
+                position: Vector {
+                    x: self.position.x + dir.x,
+                    y: self.position.y + dir.y,
+                },
+                direction,
+                id: self.id,
+            }
+        }
+    }
+
+    #[derive(Debug, Default, Clone, Copy)]
+    enum CellType {
+        #[default]
+        Empty,
+        LeftMirror,
+        RightMirror,
+        VerticalSplitter,
+        HorizontalSplitter,
+    }
+
+    #[derive(Debug, Default, Clone, Copy)]
+    struct Cell {
+        cell_type: CellType,
+        energized_by: u16,
+        last_visits: [u16; 4],
+    }
+
+    impl Cell {
+        fn of_type(cell_type: CellType) -> Cell {
+            Cell {
+                cell_type,
+                energized_by: 0,
+                last_visits: [0; 4],
+            }
+        }
+
+        fn simulate_beam(&mut self, beam: Beam) -> (bool, Vec<Beam>) {
+            let mut beams = Vec::new();
+            let energized = if self.energized_by == beam.id {
+                false
+            } else {
+                self.energized_by = beam.id;
+                true
+            };
+
+            if self.last_visits[beam.direction as usize] == beam.id {
+                return (energized, beams);
+            }
+            self.last_visits[beam.direction as usize] = beam.id;
+            match self.cell_type {
+                CellType::Empty => {
+                    beams.push(beam.next(beam.direction)); // C: .
+                }
+                CellType::LeftMirror => {
+                    let new_dir = match beam.direction {
+                        Direction::North => Direction::West,
+                        Direction::East => Direction::South,
+                        Direction::South => Direction::East,
+                        Direction::West => Direction::North,
+                    };
+                    beams.push(beam.next(new_dir)); // C: \
+                }
+                CellType::RightMirror => {
+                    let new_dir = match beam.direction {
+                        Direction::North => Direction::East,
+                        Direction::East => Direction::North,
+                        Direction::South => Direction::West,
+                        Direction::West => Direction::South,
+                    };
+                    beams.push(beam.next(new_dir)) // C: /
+                }
+                CellType::VerticalSplitter => {
+                    match beam.direction {
+                        Direction::West | Direction::East => {
+                            beams.push(beam.next(Direction::North));
+                            beams.push(beam.next(Direction::South));
+                        }
+                        _ => {
+                            beams.push(beam.next(beam.direction));
+                        }
+                    }; // C: |
+                }
+                CellType::HorizontalSplitter => {
+                    match beam.direction {
+                        Direction::North | Direction::South => {
+                            beams.push(beam.next(Direction::East));
+                            beams.push(beam.next(Direction::West));
+                        }
+                        _ => {
+                            beams.push(beam.next(beam.direction));
+                        }
+                    }; // C: -
+                }
+            }
+            (energized, beams)
+        }
+
+        fn from_char(c: char) -> Result<Cell> {
+            Ok(match c {
+                '.' => Cell::of_type(CellType::Empty),
+                '\\' => Cell::of_type(CellType::LeftMirror),
+                '/' => Cell::of_type(CellType::RightMirror),
+                '|' => Cell::of_type(CellType::VerticalSplitter),
+                '-' => Cell::of_type(CellType::HorizontalSplitter),
+                _ => return Err(format!("Unsupported char in data file! [{c}]").into()),
+            })
+        }
+    }
+
+    struct Map {
+        grid: [[Cell; 110]; 110],
+        size_override: usize,
+    }
+
+    impl Map {
+        fn out_of_bounds(&self, position: &Vector) -> bool {
+            position.x < 0
+                || position.x > self.size_override as i16
+                || position.y < 0
+                || position.y > self.size_override as i16
+        }
+        fn simulate_beam(&mut self, beam: Beam) -> u64 {
+            let mut cells_energized = 0;
+            let mut beams = vec![beam];
+            while !beams.is_empty() {
+                let beam = beams.remove(0);
+                if !self.out_of_bounds(&beam.position) {
+                    let (newly_energized, new_beams) = self.grid[beam.position.y as usize]
+                        [beam.position.x as usize]
+                        .simulate_beam(beam);
+                    for beam in new_beams {
+                        beams.push(beam);
+                    }
+                    if newly_energized {
+                        cells_energized += 1;
+                    }
+                }
+            }
+            cells_energized
+        }
+
+        fn from_data(data_lines: impl Iterator<Item = String>) -> Result<Map> {
+            let mut grid = [[Cell::default(); 110]; 110];
+            let mut size_override = 0;
+            for (y, line) in data_lines.enumerate() {
+                for (x, c) in line.chars().enumerate() {
+                    grid[y][x] = Cell::from_char(c)?;
+                }
+                size_override = y;
+            }
+            Ok(Map {
+                grid,
+                size_override,
+            })
+        }
+
+        fn draw_map(&self) {
+            for row in self.grid {
+                for cell in row {
+                    print!("{}", cell.energized_by);
+                }
+                println!();
+            }
+        }
+    }
+
+    pub fn calculate(data_path: &str) -> Result<u64> {
+        let mut map = Map::from_data(reader::get_lines(data_path)?)?;
+        let energized_tiles = map.simulate_beam(Beam {
+            id: 1,
+            position: Vector { x: 0, y: 0 },
+            direction: Direction::East,
+        });
+
+        //map.draw_map();
+
+        Ok(energized_tiles)
     }
 }
 
